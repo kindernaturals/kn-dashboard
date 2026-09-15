@@ -1600,8 +1600,7 @@ function downloadFormulaTemplate() {
   ];
 
   const rows = [headers, ...example];
-  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('
-');
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1616,8 +1615,7 @@ async function importFormulaCSV(input) {
   setSS('ing','⟳ Importing...');
 
   const text = await file.text();
-  const lines = text.split('
-').map(l=>l.trim()).filter(Boolean);
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   if(lines.length < 2) { setSS('err','⚠ CSV appears empty'); return; }
 
   // Parse CSV headers
