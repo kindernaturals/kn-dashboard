@@ -1,0 +1,2064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinder Naturals — Business Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:#FAF7FF;--cream-dark:#F0EAF8;--bark:#1E0A3C;--bark-mid:#3D1F6B;
+  --purple:#6B35A8;--purple-light:#9B6DD4;--purple-pale:#E8DEFF;
+  --gold:#C9922A;--gold-light:#F0C96A;--sand:#D4BEF0;--sage:#5C7A5C;
+  --danger:#B84444;--danger-light:#F4E0E0;--warn:#A07020;--warn-light:#FBF0D8;
+  --success:#2E6E3E;--success-light:#DFF0E4;--info:#1A5C8B;--info-light:#E0EEF8;
+  --border:rgba(107,53,168,0.15);--shadow:0 2px 16px rgba(107,53,168,0.09);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--bark);min-height:100vh;font-size:15px;line-height:1.6;}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bark);}
+.login-card{background:var(--cream);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;text-align:center;}
+.login-logo{font-family:'DM Serif Display',serif;font-size:28px;color:var(--purple);margin-bottom:4px;}
+.login-sub{font-size:12px;color:#9A80B0;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2rem;}
+.login-card input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:11px 14px;font-family:'Outfit',sans-serif;font-size:14px;background:#fff;color:var(--bark);margin-bottom:12px;text-align:center;letter-spacing:0.15em;}
+.login-card input:focus{outline:none;border-color:var(--purple);}
+.login-err{color:var(--danger);font-size:12px;margin-bottom:10px;min-height:18px;}
+.login-hint{font-size:11px;color:#9A80B0;margin-top:1rem;}
+header{background:var(--bark);color:var(--cream);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;}
+.brand{font-family:'DM Serif Display',serif;font-size:18px;color:var(--gold-light);}
+.brand-sub{font-size:10px;color:var(--sand);letter-spacing:0.1em;text-transform:uppercase;margin-left:8px;}
+.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.user-badge{font-size:11px;color:var(--sand);background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:20px;}
+.sync-status{font-size:11px;padding:4px 10px;border-radius:20px;}
+.sync-ok{background:rgba(46,110,62,0.3);color:#90EE90;}
+.sync-err{background:rgba(184,68,68,0.3);color:#FFB3B3;}
+.sync-ing{background:rgba(107,53,168,0.3);color:var(--sand);}
+.nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;width:100%;}
+.nav::-webkit-scrollbar{height:3px;}
+.nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.nav-item{padding:11px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:#8A70A0;border-bottom:2.5px solid transparent;white-space:nowrap;transition:all 0.15s;flex-shrink:0;}
+.nav-item:hover{color:var(--bark);}
+.nav-item.active{color:var(--purple);border-bottom-color:var(--purple);}
+.main{max-width:1000px;margin:0 auto;padding:1.25rem 1rem 4rem;}
+.btn{padding:7px 14px;border-radius:7px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s;display:inline-flex;align-items:center;gap:5px;}
+.btn-purple{background:var(--purple);border-color:var(--purple);color:#fff;}
+.btn-purple:hover{background:var(--bark-mid);}
+.btn-outline{background:transparent;border-color:var(--border);color:var(--bark);}
+.btn-outline:hover{background:rgba(107,53,168,0.05);}
+.btn-danger{background:transparent;border-color:rgba(184,68,68,0.35);color:var(--danger);}
+.btn-danger:hover{background:var(--danger-light);}
+.btn-light{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.2);color:var(--cream);}
+.btn-light:hover{background:rgba(255,255,255,0.2);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:0.9rem;box-shadow:var(--shadow);}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;flex-wrap:wrap;gap:8px;}
+.card-title{font-weight:600;font-size:14px;}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:0.9rem;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#9A80B0;}
+.field input,.field select,.field textarea{border:1px solid rgba(107,53,168,0.2);border-radius:7px;padding:8px 10px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--bark);background:var(--cream);width:100%;transition:border-color 0.15s;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--purple);background:#fff;}
+.span2{grid-column:span 2;}.span3{grid-column:span 3;}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.1rem;}
+.metric{background:#fff;border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;}
+.metric-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#9A80B0;margin-bottom:4px;}
+.metric-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;}
+.green{color:var(--success);}.red{color:var(--danger);}.amber-c{color:var(--warn);}.purple-c{color:var(--purple);}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{text-align:left;padding:8px 10px;font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1.5px solid var(--border);background:rgba(107,53,168,0.04);}
+.tbl td{padding:10px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(107,53,168,0.03);}
+.mono{font-family:'DM Mono',monospace;font-size:12px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-green{background:var(--success-light);color:var(--success);}
+.badge-amber{background:var(--warn-light);color:var(--warn);}
+.badge-red{background:var(--danger-light);color:var(--danger);}
+.badge-purple{background:var(--purple-pale);color:var(--purple);}
+.badge-grey{background:rgba(107,53,168,0.08);color:#7A60A0;}
+.saving-pill{display:inline-block;background:var(--success-light);color:var(--success);font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;}
+.worse-pill{display:inline-block;background:var(--danger-light);color:var(--danger);font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.cp{border-radius:10px;padding:1rem;border:1.5px solid;}
+.cp.free{border-color:rgba(92,122,92,0.4);background:rgba(92,122,92,0.04);}
+.cp.charged{border-color:rgba(107,53,168,0.3);background:rgba(107,53,168,0.03);}
+.cp-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+.cp.free .cp-lbl{color:var(--sage);}.cp.charged .cp-lbl{color:var(--purple);}
+.p-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(107,53,168,0.05);}
+.p-row .lbl{color:#7A60A0;}.p-row .val{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
+.p-total{font-weight:700;font-size:13px;border-top:1.5px solid var(--border)!important;padding-top:8px!important;margin-top:2px;border-bottom:none!important;}
+.mbar{height:6px;background:rgba(107,53,168,0.1);border-radius:3px;margin:8px 0;overflow:hidden;}
+.mbar-fill{height:100%;border-radius:3px;}
+.sug-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+.sug-card{background:var(--cream-dark);border:1px solid var(--border);border-radius:7px;padding:0.6rem 0.8rem;}
+.sug-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#9A80B0;margin-bottom:2px;}
+.sug-val{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;}
+.ship-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1rem;}
+.ship-opt{flex:1;padding:9px 6px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:#9A80B0;transition:all 0.15s;line-height:1.3;}
+.ship-opt.active{background:var(--purple);color:#fff;}
+.ship-opt:not(:last-child){border-right:1px solid var(--border);}
+.recipe-row{display:grid;grid-template-columns:1fr 90px 80px 34px;gap:6px;align-items:end;margin-bottom:6px;}
+.cost-row{display:grid;grid-template-columns:1fr 110px 34px;gap:8px;align-items:end;margin-bottom:7px;}
+.cost-empty{font-size:12px;color:#9A80B0;padding:5px 0;font-style:italic;}
+.hint{background:var(--purple-pale);border:1px solid rgba(107,53,168,0.2);border-radius:7px;padding:0.7rem 0.9rem;font-size:12px;color:var(--bark-mid);margin-bottom:0.9rem;line-height:1.6;}
+/* Supplier tiers */
+.supplier-block{background:var(--cream-dark);border:1px solid var(--border);border-radius:8px;padding:0.8rem;margin-bottom:0.75rem;}
+.supplier-block-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;}
+.supplier-type-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--purple);}
+.tier-row{display:grid;grid-template-columns:80px 90px 90px 70px 34px;gap:6px;align-items:end;margin-bottom:5px;}
+.currency-tag{font-size:10px;font-weight:600;background:var(--purple-pale);color:var(--purple);padding:2px 6px;border-radius:4px;margin-left:4px;}
+#ingModal{display:none;position:fixed;inset:0;background:rgba(30,10,60,0.6);z-index:200;overflow-y:auto;padding:2rem 1rem;}
+.modal-card{background:#fff;border-radius:14px;max-width:640px;margin:0 auto;padding:1.5rem;}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:#9A80B0;font-size:13px;}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
+.section-title{font-weight:600;font-size:16px;}
+hr.div{border:none;border-top:1px solid var(--border);margin:0.9rem 0;}
+select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--bark);background:var(--cream);}
+/* FX settings */
+.fx-row{display:grid;grid-template-columns:60px 1fr 100px;gap:8px;align-items:center;margin-bottom:6px;font-size:13px;}
+@media(max-width:600px){
+  .compare-grid{grid-template-columns:1fr;}
+  .recipe-row{grid-template-columns:1fr 80px 70px 28px;}
+  .cost-row{grid-template-columns:1fr 95px 28px;}
+  .sug-grid{grid-template-columns:1fr;}
+  .tier-row{grid-template-columns:70px 80px 80px 60px 28px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">Kinder Naturals</div>
+    <div class="login-sub">Business Tool</div>
+    <div id="loginLoading" style="display:none;"></div>
+    <input type="password" id="pwInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;margin-bottom:0.75rem;">
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-purple" id="loginBtn" style="width:100%;justify-content:center;" onclick="doLogin()">Sign in</button>
+    <div class="login-hint">Contact the account owner for access.</div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <div><span class="brand">Kinder Naturals</span><span class="brand-sub">Business Tool</span></div>
+    <div class="header-right">
+      <span class="sync-status sync-ing" id="syncStatus">⟳ Connecting...</span>
+      <span class="user-badge" id="userBadge"></span>
+      <button class="btn btn-light btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
+  <nav class="nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="showPane('dashboard')">📊 Dashboard</button>
+    <button class="nav-item" id="nav-ingredients" onclick="showPane('ingredients')">🧪 Ingredients</button>
+    <button class="nav-item" id="nav-packaging" onclick="showPane('packaging')">📦 Packaging</button>
+    <button class="nav-item" id="nav-products" onclick="showPane('products')">🧴 Products</button>
+    <button class="nav-item" id="nav-pricing" onclick="showPane('pricing')">💷 Pricing</button>
+    <button class="nav-item" id="nav-settings" onclick="showPane('settings')">⚙ Settings</button>
+  </nav>
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="pane-dashboard">
+      <div class="section-head">
+        <span class="section-title">Overview</span>
+        <button class="btn btn-purple btn-sm" onclick="showPane('products');goNewProduct()">+ New product</button>
+      </div>
+      <div class="metrics" id="dashMetrics"></div>
+      <div class="card"><div class="card-head"><span class="card-title">Products at a glance</span></div><div id="dashProductTable"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">Top ingredient savings (vs UK price)</span><button class="btn btn-outline btn-sm" onclick="showPane('ingredients')">View all</button></div><div id="dashIngTop"></div></div>
+    </div>
+
+    <!-- INGREDIENTS -->
+    <div id="pane-ingredients" style="display:none;">
+      <div class="section-head">
+        <span class="section-title">Ingredient library</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="exportIngredients()">⬇ CSV</button>
+          <button class="btn btn-purple btn-sm" onclick="openIngModal()">+ Add ingredient</button>
+        </div>
+      </div>
+      <div class="hint">Add multiple UK suppliers and factory/wholesale sources per ingredient with different quantities and currencies. Your VA's changes appear instantly.</div>
+      <div class="card" style="padding:0;overflow:hidden;"><div id="ingTable"></div></div>
+    </div>
+
+    <!-- PACKAGING -->
+    <div id="pane-packaging" style="display:none;">
+      <div class="section-head">
+        <span class="section-title">Packaging library</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="exportPackaging()">⬇ CSV</button>
+          <button class="btn btn-purple btn-sm" onclick="openPkgModal()">+ Add item</button>
+        </div>
+      </div>
+      <div class="hint">Build your packaging library once — jars, bottles, boxes, labels, pouches. Then select them when building products. Costs calculate automatically.</div>
+      <div class="card" style="padding:0;overflow:hidden;"><div id="pkgTable"></div></div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div id="pane-products" style="display:none;">
+      <div class="section-head">
+        <span class="section-title">Products</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="downloadFormulaTemplate()">⬇ Download Template</button>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;">⬆ Import CSV <input type="file" accept=".csv" style="display:none" onchange="importFormulaCSV(this)"></label>
+          <select id="prodSelector" onchange="loadProduct(this.value)"></select>
+          <button class="btn btn-purple btn-sm" onclick="goNewProduct()">+ New</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">📦 Product details</span><button class="btn btn-danger btn-sm" onclick="deleteProduct()">🗑 Delete</button></div>
+        <div class="field-grid">
+          <div class="field span2"><label>Product name</label><input id="pName" placeholder="e.g. African Black Soap Bar 140g" oninput="recalc()"></div>
+          <div class="field"><label>SKU</label><input id="pSku" placeholder="ABS-140G"></div>
+          <div class="field" style="display:none;"><label>Batch size (units)</label><input id="pBatch" type="number" value="1" min="1" oninput="recalc()"></div>
+          <div class="field"><label>Selling price (£) excl. shipping</label><input id="pPrice" type="number" step="0.01" placeholder="5.99" oninput="recalc()"></div>
+          <div class="field"><label>Platform</label>
+            <select id="pPlatform" onchange="recalc()">
+              <option value="own">Own website</option><option value="etsy">Etsy</option><option value="ebay">eBay</option>
+            </select>
+          </div>
+          <div class="field"><label>VAT (%)</label><input id="pVat" type="number" step="0.1" value="0" oninput="recalc()"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:0.75rem;">🚚 Shipping</div>
+        <div class="field-grid">
+          <div class="field"><label>Your cost to ship per unit (£)</label><input id="pShipCost" type="number" step="0.01" placeholder="1.16" oninput="recalc()"></div>
+          <div class="field"><label>Charge to customer (£)</label><input id="pShipCharge" type="number" step="0.01" placeholder="2.99" oninput="recalc()"></div>
+        </div>
+      </div>
+      <!-- CARD 1: FORMULA INGREDIENTS -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">⚗️ Formula — Ingredients</span>
+          <button class="btn btn-outline btn-sm" onclick="addFormulaRow()">+ Add ingredient</button>
+        </div>
+        <div class="hint" style="margin-bottom:0.75rem;">Enter each ingredient as a % of the batch. Must total 100%. Costs calculate from your ingredient library in real time.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;padding:14px;background:var(--cream-dark);border-radius:10px;">
+          <div class="field">
+            <label>Total batch size</label>
+            <input type="number" id="fBatchSize" placeholder="e.g. 2500" step="0.1" oninput="renderFormula()" style="font-size:15px;font-weight:600;">
+          </div>
+          <div class="field">
+            <label>Batch unit</label>
+            <select id="fBatchUnit" onchange="renderFormula()">
+              <option value="g">g (grams)</option>
+              <option value="ml">ml (millilitres)</option>
+              <option value="kg">kg (kilograms)</option>
+            </select>
+          </div>
+          <input type="hidden" id="fWaste" value="0">
+        </div>
+        <div id="formulaRows"></div>
+        <div id="formulaPctTotal" style="margin:8px 0;font-size:13px;font-weight:600;"></div>
+        <div id="formulaBatchSummary" style="display:none;margin:12px 0;padding:14px;background:var(--purple-pale);border-radius:10px;font-size:13px;"></div>
+      </div>
+
+      <!-- CARD 2: UNITS & PACKAGING -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">📦 Units &amp; Packaging</span>
+        </div>
+        <div class="hint" style="margin-bottom:1rem;">Set your fill size, labour cost, then add all packaging items (bottles, labels, boxes, tape etc). True cost per unit updates automatically.</div>
+
+        <!-- Fill size + labour row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:14px;background:var(--cream-dark);border-radius:10px;margin-bottom:18px;">
+          <div class="field">
+            <label>Fill size (per unit)</label>
+            <input type="number" id="fFillSize" placeholder="e.g. 250" step="0.1" oninput="renderFormula()">
+          </div>
+          <div class="field">
+            <label>Labour cost (£ per batch)</label>
+            <input type="number" id="fLabour" placeholder="e.g. 10.00" step="0.01" oninput="renderFormula()">
+          </div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:4px;">
+            <div id="unitsBatchDisplay" style="font-size:13px;color:#6B35A8;font-weight:600;"></div>
+          </div>
+        </div>
+
+        <!-- Packaging items -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#7A60A0;">Packaging items</div>
+          <button class="btn btn-outline btn-sm" onclick="addPkgItem()">+ Add packaging</button>
+        </div>
+        <div class="hint" style="margin-bottom:10px;">Select from your packaging library. Enter quantity used per unit (e.g. 1 label, 0.1 roll of tape).</div>
+        <div id="pkgItemRows"></div>
+        <div id="noPkgItems" style="font-size:13px;color:#9A80B0;padding:4px 0 12px;">No packaging added yet.</div>
+
+        <!-- Cost per unit summary -->
+        <div id="unitCostSummary" style="display:none;margin-top:16px;padding:16px;background:var(--purple-pale);border-radius:10px;">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#7A60A0;margin-bottom:12px;">Cost per unit breakdown</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+            <div><div style="font-size:10px;text-transform:uppercase;color:#9A80B0;margin-bottom:3px;">Units/batch</div><strong style="font-size:20px;color:var(--purple)" id="ucs-units">—</strong></div>
+            <div><div style="font-size:10px;text-transform:uppercase;color:#9A80B0;margin-bottom:3px;">Ingredients</div><strong id="ucs-ing">—</strong></div>
+            <div><div style="font-size:10px;text-transform:uppercase;color:#9A80B0;margin-bottom:3px;">Labour</div><strong id="ucs-lab">—</strong></div>
+            <div><div style="font-size:10px;text-transform:uppercase;color:#9A80B0;margin-bottom:3px;">Packaging</div><strong id="ucs-pkg">—</strong></div>
+            <div style="background:white;border-radius:8px;padding:10px;"><div style="font-size:10px;text-transform:uppercase;color:var(--purple);margin-bottom:3px;">True cost/unit</div><strong style="font-size:18px;color:var(--purple)" id="ucs-total">—</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- hidden fill size compat wrapper -->
+      <div style="display:none"><div id="fillSizeRows"></div><div id="noFillSizes"></div><div id="fillSizesWrap"></div></div>
+
+      <!-- HIDDEN legacy cards (keep for data compatibility) -->
+      <div style="display:none;"><div id="recipeRows"></div><div id="recipeCostSummary"></div><div id="pkgRecipeRows"></div><div id="pkgRecipeCostSummary"></div></div>
+
+      <div class="card"><div class="card-head"><span class="card-title">📦 Additional packaging / manual</span><button class="btn btn-outline btn-sm" onclick="addCost('packaging')">+ Add</button></div><div id="packaging-costs"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">👐 Labour &amp; freelance</span><button class="btn btn-outline btn-sm" onclick="addCost('labour')">+ Add</button></div><div id="labour-costs"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">📋 Other costs</span><button class="btn btn-outline btn-sm" onclick="addCost('other')">+ Add</button></div><div id="other-costs"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:0.9rem;flex-wrap:wrap;">
+        <button class="btn btn-purple" onclick="saveProduct()">✓ Save product</button>
+        <button class="btn btn-outline" onclick="showPane('pricing')">View pricing →</button>
+      </div>
+    </div>
+
+    <!-- PRICING -->
+    <div id="pane-pricing" style="display:none;">
+      <div class="section-head"><span class="section-title">Pricing analysis</span><button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export CSV</button></div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:0.75rem;">Select product &amp; fill size</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;">
+          <div class="field" style="flex:1;min-width:200px;">
+            <label>Product</label>
+            <select id="pricingProdSel" onchange="onPricingProdChange()" style="width:100%;padding:8px 12px;font-size:13px;border-radius:7px;border:1px solid var(--border);background:var(--cream);"></select>
+          </div>
+          <div class="field" style="flex:1;min-width:200px;" id="fillSizeSelWrap" style="display:none;">
+            <label>Unit size / variant</label>
+            <select id="pricingFillSel" onchange="renderPricing()" style="width:100%;padding:8px 12px;font-size:13px;border-radius:7px;border:1px solid var(--border);background:var(--cream);">
+              <option value="">— select fill size —</option>
+            </select>
+          </div>
+        </div>
+        <div id="pricingCostSource" style="margin-top:10px;font-size:12px;color:#7A60A0;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:0.75rem;">Shipping scenario</div>
+        <div class="ship-toggle">
+          <button class="ship-opt active" id="sopt-both" onclick="setShipMode('both')">Both side by side</button>
+          <button class="ship-opt" id="sopt-free" onclick="setShipMode('free')">Free shipping</button>
+          <button class="ship-opt" id="sopt-charged" onclick="setShipMode('charged')">Charged shipping</button>
+        </div>
+      </div>
+      <div id="pricingOutput"></div>
+      <div class="card" style="border-left:3px solid var(--purple);">
+        <div class="card-head"><span class="card-title">🎁 Bundle pricing</span></div>
+        <div class="hint">Set bundle prices to see profit and per-unit cost instantly.</div>
+        <div id="bundleRows"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addBundleRow()">+ Add bundle tier</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="pane-settings" style="display:none;">
+      <div class="section-head"><span class="section-title">Settings</span></div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem;">🔐 Passwords</div>
+        <div class="field-grid">
+          <div class="field"><label>Owner password</label><input type="password" id="newOwnerPw" placeholder="New password"></div>
+          <div class="field"><label>VA password</label><input type="password" id="newVaPw" placeholder="New VA password"></div>
+        </div>
+        <button class="btn btn-purple btn-sm" onclick="savePws()">Save passwords</button>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem;">💱 Currency exchange rates (to £ GBP)</div>
+        <div class="hint" style="margin-bottom:0.75rem;">Set manual rates. Update monthly or when rates change significantly. All costs convert to £ for margin calculations.</div>
+        <div id="fxRows"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addFxRow()">+ Add currency</button>
+        <button class="btn btn-purple btn-sm" style="margin-top:6px;margin-left:8px;" onclick="saveFx()">Save rates</button>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem;">⚙ Platform fees & margin targets</div>
+        <div class="field-grid">
+          <div class="field"><label>Etsy (%)</label><input id="sEtsy" type="number" step="0.1" value="6.5"></div>
+          <div class="field"><label>eBay (%)</label><input id="sEbay" type="number" step="0.1" value="12.9"></div>
+          <div class="field"><label>Own site (%)</label><input id="sOwn" type="number" step="0.1" value="2.9"></div>
+          <div class="field"><label>Good margin (%)</label><input id="sGood" type="number" value="40"></div>
+          <div class="field"><label>Min margin (%)</label><input id="sMin" type="number" value="20"></div>
+        </div>
+        <button class="btn btn-purple btn-sm" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- INGREDIENT MODAL -->
+<div id="ingModal">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <span style="font-weight:600;font-size:15px;" id="ingModalTitle">Add ingredient</span>
+      <button class="btn btn-outline btn-sm" onclick="closeIngModal()">✕</button>
+    </div>
+    <div class="field-grid" style="margin-bottom:0.75rem;">
+      <div class="field span2"><label>Ingredient name</label><input id="ingName" placeholder="e.g. Organic Shea Butter"></div>
+      <div class="field"><label>Base unit</label>
+        <select id="ingUnit"><option value="kg">kg</option><option value="L">L</option><option value="g">g</option><option value="ml">ml</option><option value="unit">unit</option></select>
+      </div>
+      <div class="field span2"><label>Notes</label><input id="ingNotes" placeholder="e.g. min order 5kg from factory, store cool"></div>
+    </div>
+
+    <!-- UK Suppliers -->
+    <div style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.06em;">🇬🇧 UK / Regional suppliers</span>
+        <button class="btn btn-outline btn-xs" onclick="addSupplierRow('uk')">+ Add supplier</button>
+      </div>
+      <div id="ukSuppliers"></div>
+    </div>
+
+    <!-- Factory Suppliers -->
+    <div style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--sage);text-transform:uppercase;letter-spacing:0.06em;">🏭 Factory / Wholesale suppliers</span>
+        <button class="btn btn-outline btn-xs" onclick="addSupplierRow('fac')">+ Add supplier</button>
+      </div>
+      <div id="facSuppliers"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:0.5rem;">
+      <button class="btn btn-purple" onclick="saveIngredient()">Save ingredient</button>
+      <button class="btn btn-outline" onclick="closeIngModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PACKAGING MODAL -->
+<div id="pkgModal" style="display:none;position:fixed;inset:0;background:rgba(30,10,60,0.6);z-index:200;overflow-y:auto;padding:2rem 1rem;">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <span style="font-weight:600;font-size:15px;" id="pkgModalTitle">Add packaging item</span>
+      <button class="btn btn-outline btn-sm" onclick="closePkgModal()">✕</button>
+    </div>
+    <div class="field-grid" style="margin-bottom:0.75rem;">
+      <div class="field span2"><label>Item name</label><input id="pkgName" placeholder="e.g. 250ml Amber Glass Jar"></div>
+      <div class="field"><label>Category</label>
+        <select id="pkgCategory">
+          <option value="jar">Jar</option>
+          <option value="bottle">Bottle</option>
+          <option value="box">Box</option>
+          <option value="label">Label</option>
+          <option value="pouch">Pouch</option>
+          <option value="tube">Tube</option>
+          <option value="lid">Lid / Cap</option>
+          <option value="bag">Bag</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Unit</label>
+        <select id="pkgUnit">
+          <option value="unit">unit (each)</option>
+          <option value="pack">pack</option>
+          <option value="box">box</option>
+          <option value="roll">roll</option>
+        </select>
+      </div>
+      <div class="field span2"><label>Notes</label><input id="pkgNotes" placeholder="e.g. fits 250ml, food grade, recyclable"></div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.06em;">🇬🇧 UK / Regional suppliers</span>
+        <button class="btn btn-outline btn-xs" onclick="addPkgSupplierRow('uk')">+ Add supplier</button>
+      </div>
+      <div id="pkgUKSuppliers"></div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--sage);text-transform:uppercase;letter-spacing:0.06em;">🏭 Factory / Wholesale suppliers</span>
+        <button class="btn btn-outline btn-xs" onclick="addPkgSupplierRow('fac')">+ Add supplier</button>
+      </div>
+      <div id="pkgFacSuppliers"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:0.5rem;">
+      <button class="btn btn-purple" onclick="savePkgItem()">Save item</button>
+      <button class="btn btn-outline" onclick="closePkgModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://pgedkmfcjvccmusvgaav.supabase.co';
+// SB_KEY loaded from localStorage — entered once by owner
+let SB_KEY=localStorage.getItem('kn_sb_key')||'';
+let SB_H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
+
+let ingredients=[],products=[],settings={etsy:6.5,ebay:12.9,own:2.9,good:40,min:20};
+let auth={owner:'Va2026',va:'Va2026'};
+let fxRates=[{currency:'USD',rate:0.79},{currency:'EUR',rate:0.86},{currency:'CNY',rate:0.11},{currency:'AUD',rate:0.51}];
+let currentUser=null,currentProdId=null,shipMode='both';
+let recipeRows=[],costs={packaging:[],labour:[],other:[]},bundleRows=[];
+let editIngId=null,ctr=0;
+// modal supplier rows
+let modalUKSuppliers=[],modalFacSuppliers=[];
+
+function uid(){return 'id'+Date.now()+Math.floor(Math.random()*9999);}
+function stableId(str){let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}return 's'+(h>>>0).toString(36);}
+function cid(){return ++ctr;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function nv(id){const el=document.getElementById(id);return el?parseFloat(el.value)||0:0;}
+function vv(id){const el=document.getElementById(id);return el?el.value:'';}
+
+// FX: convert any currency amount to GBP
+function toGBP(amount,currency){
+  if(!currency||currency==='GBP')return amount;
+  const fx=fxRates.find(f=>f.currency===currency);
+  return fx?amount*(fx.rate):amount;
+}
+function availCurrencies(){return ['GBP',...fxRates.map(f=>f.currency)];}
+
+// Sync status
+function setSS(state,msg){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status sync-'+state;el.textContent=msg;}
+
+async function sbGet(t){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),5000);
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/${t}?select=*`,{headers:SB_H,signal:controller.signal});
+    clearTimeout(timer);
+    if(!r.ok)throw new Error(await r.text());
+    return r.json();
+  }catch(e){clearTimeout(timer);throw e;}
+}
+async function sbUp(t,data){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_H});if(!r.ok)throw new Error(await r.text());}
+
+async function loadAll(){
+  setSS('ing','⟳ Loading...');
+  try{
+    const[ings,prods,setts]=await Promise.all([sbGet('nns_ingredients'),sbGet('nns_products'),sbGet('nns_settings')]);
+    let pkgs=[];
+    try{pkgs=await sbGet('nns_packaging');}catch(e){console.warn('Packaging table not ready:',e);}
+    function mapSuppliers(raw,fallbackName,fallbackPrice){
+      if(Array.isArray(raw)&&raw.length){
+        return raw.map(s=>{
+          const sid=s.id||stableId((s.name||'')+(s.tiers||[]).map(t=>t.price).join(''));
+          return {
+            id:sid,
+            name:s.name||'',
+            tiers:(s.tiers||[]).map((t,ti)=>({
+              id:t.id||stableId(sid+'tier'+ti+t.price+t.qty),
+              qty:parseFloat(t.qty)||1,
+              price:parseFloat(t.price)||0,
+              currency:t.currency||'GBP'
+            }))
+          };
+        });
+      }
+      if(fallbackPrice>0){
+        const sid=stableId((fallbackName||'')+'fallback'+fallbackPrice);
+        return [{id:sid,name:fallbackName||'',tiers:[{id:stableId(sid+'t0'),qty:1,price:fallbackPrice,currency:'GBP'}]}];
+      }
+      return [];
+    }
+    ingredients=(ings||[]).map(i=>({
+      id:i.id,name:i.name,unit:i.unit||'kg',notes:i.notes||'',
+      ukSuppliers:Array.isArray(i.supplier_uk)&&i.supplier_uk.length?i.supplier_uk:mapSuppliers(null,'',parseFloat(i.price_uk)||0),
+      facSuppliers:Array.isArray(i.supplier_fac)&&i.supplier_fac.length?i.supplier_fac:mapSuppliers(null,'',parseFloat(i.price_fac)||0)
+    }));
+    products=(prods||[]).map(p=>({...JSON.parse(typeof p.data==='string'?p.data:JSON.stringify(p.data)),id:p.id}));
+    const aRow=setts.find(s=>s.key==='auth'),sRow=setts.find(s=>s.key==='settings'),fRow=setts.find(s=>s.key==='fx');
+    if(aRow)auth={...auth,...aRow.value};
+    if(sRow)settings={...settings,...sRow.value};
+    if(fRow&&fRow.value)fxRates=fRow.value;
+    packagingItems=(pkgs||[]).map(i=>({id:i.id,name:i.name,category:i.category||'other',unit:i.unit||'unit',notes:i.notes||'',ukSuppliers:Array.isArray(i.supplier_uk)?i.supplier_uk:[],facSuppliers:Array.isArray(i.supplier_fac)?i.supplier_fac:[]}));
+    applySettingsUI();renderFxRows();
+    setSS('ok','✓ Live');
+  }catch(e){setSS('err','⚠ Offline');console.error(e);}
+}
+
+async function saveIngToDB(ing){
+  setSS('ing','⟳ Saving...');
+  try{
+    await sbUp('nns_ingredients',{id:ing.id,name:ing.name,unit:ing.unit,notes:ing.notes||'',supplier_uk:ing.ukSuppliers,supplier_fac:ing.facSuppliers,price_uk:cheapestGBPPrice(ing,'uk'),price_fac:cheapestGBPPrice(ing,'fac')});
+    setSS('ok','✓ Saved');
+  }catch(e){setSS('err','⚠ Save failed');console.error(e);}
+}
+async function delIngDB(id){try{await sbDel('nns_ingredients',id);setSS('ok','✓ Deleted');}catch(e){setSS('err','⚠ Failed');}}
+async function saveProdDB(prod){
+  setSS('ing','⟳ Saving...');
+  try{const{id,...rest}=prod;await sbUp('nns_products',{id,data:rest});setSS('ok','✓ Saved');}catch(e){setSS('err','⚠ Save failed');console.error(e);}
+}
+async function delProdDB(id){try{await sbDel('nns_products',id);setSS('ok','✓ Deleted');}catch(e){setSS('err','⚠ Failed');}}
+async function saveSetDB(key,value){try{await sbUp('nns_settings',{key,value});setSS('ok','✓ Saved');}catch(e){setSS('err','⚠ Failed');}}
+
+// AUTH — completely independent of Supabase
+function loadAuth(){
+  document.getElementById('loginLoading').style.display='none';
+  document.getElementById('pwInput').style.display='block';
+  document.getElementById('loginBtn').style.display='block';
+  setTimeout(()=>document.getElementById('pwInput').focus(),100);
+}
+function doLogin(){
+  const pw=document.getElementById('pwInput').value.trim();
+  if(pw===auth.owner||pw===auth.va){
+    currentUser=pw===auth.owner?'owner':'va';
+    // Prompt for SB key if not set
+    if(!SB_KEY){
+      const k=prompt('First time setup: paste your Supabase anon key (eyJ...)');
+      if(k&&k.startsWith('eyJ')){
+        SB_KEY=k;
+        localStorage.setItem('kn_sb_key',k);
+        SB_H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
+      }
+    }
+    startApp();
+  }else{
+    document.getElementById('loginErr').textContent='Incorrect password. Try again.';
+  }
+}
+function doLogout(){currentUser=null;document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';document.getElementById('pwInput').value='';document.getElementById('loginErr').textContent='';loadAuth();}
+// Load auth from Supabase immediately on page open
+loadAuth();
+function startApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';document.getElementById('userBadge').textContent=currentUser==='owner'?'👑 Owner':'🛠 VA';loadAll().then(()=>showPane('dashboard'));}
+async function savePws(){const op=vv('newOwnerPw').trim(),vp=vv('newVaPw').trim();if(op)auth.owner=op;if(vp)auth.va=vp;await saveSetDB('auth',auth);toast('Passwords updated');}
+
+// SETTINGS
+function applySettingsUI(){['sEtsy','sEbay','sOwn','sGood','sMin'].forEach(id=>{const el=document.getElementById(id);if(el){const k=id.replace('s','').toLowerCase();el.value=settings[k]||settings[id.slice(1).toLowerCase()]||'';}});
+  document.getElementById('sEtsy').value=settings.etsy;document.getElementById('sEbay').value=settings.ebay;document.getElementById('sOwn').value=settings.own;document.getElementById('sGood').value=settings.good;document.getElementById('sMin').value=settings.min;}
+async function saveSettings(){settings={etsy:nv('sEtsy')||6.5,ebay:nv('sEbay')||12.9,own:nv('sOwn')||2.9,good:nv('sGood')||40,min:nv('sMin')||20};await saveSetDB('settings',settings);toast('Settings saved');}
+function pfRate(plat){return(settings[plat]||settings.own)/100;}
+function goodT(){return settings.good;}function minT(){return settings.min;}
+
+// FX
+function renderFxRows(){
+  const w=document.getElementById('fxRows');if(!w)return;
+  w.innerHTML=fxRates.map((f,i)=>`<div class="fx-row">
+    <input value="${esc(f.currency)}" placeholder="USD" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;background:var(--cream);" oninput="fxRates[${i}].currency=this.value">
+    <span style="font-size:12px;color:#9A80B0;">1 ${esc(f.currency)} = £</span>
+    <input type="number" step="0.0001" value="${f.rate}" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;background:var(--cream);" oninput="fxRates[${i}].rate=parseFloat(this.value)||0">
+    <button class="btn btn-danger btn-xs" onclick="fxRates.splice(${i},1);renderFxRows()">✕</button>
+  </div>`).join('');
+}
+function addFxRow(){fxRates.push({currency:'',rate:1});renderFxRows();}
+async function saveFx(){await saveSetDB('fx',fxRates);toast('Exchange rates saved');}
+
+// PANES
+function showPane(name){
+  ['dashboard','ingredients','packaging','products','pricing','settings'].forEach(p=>{document.getElementById('pane-'+p).style.display=p===name?'block':'none';document.getElementById('nav-'+p).classList.toggle('active',p===name);});
+  if(name==='dashboard')renderDashboard();
+  if(name==='ingredients')renderIngTable();
+  if(name==='packaging')renderPkgTable();
+  if(name==='pricing'){updatePricingSelectors();renderPricing();renderBundles();}
+}
+
+// INGREDIENT HELPERS
+function cheapestGBPPrice(ing,type){
+  const suppliers=type==='uk'?ing.ukSuppliers:ing.facSuppliers;
+  if(!suppliers||!suppliers.length)return 0;
+  let best=Infinity;
+  for(const s of suppliers)for(const t of (s.tiers||[]))if(t.price){const p=toGBP(t.price,t.currency||'GBP')/Math.max(1,t.qty||1);if(p<best)best=p;}
+  return best===Infinity?0:best;
+}
+function bestPricePerKg(ing){
+  const uk=cheapestGBPPrice(ing,'uk'),fac=cheapestGBPPrice(ing,'fac');
+  if(!uk&&!fac)return 0;if(!uk)return fac;if(!fac)return uk;return Math.min(uk,fac);
+}
+function savingPct(ing){
+  const uk=cheapestGBPPrice(ing,'uk'),fac=cheapestGBPPrice(ing,'fac');
+  if(!uk||!fac)return null;return((uk-fac)/uk*100);
+}
+function cheaperSource(ing){
+  const uk=cheapestGBPPrice(ing,'uk'),fac=cheapestGBPPrice(ing,'fac');
+  if(!uk&&!fac)return '—';if(!uk)return 'factory';if(!fac)return 'uk';return fac<uk?'factory':'uk';
+}
+
+// MODAL SUPPLIER ROWS
+function addSupplierRow(type,data){
+  const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+  arr.push({id:cid(),name:data?.name||'',tiers:data?.tiers||[{id:cid(),qty:1,price:'',currency:'GBP'}]});
+  renderModalSuppliers();
+}
+function addTierToSupplier(type,sid){
+  const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(s)s.tiers.push({id:cid(),qty:'',price:'',currency:'GBP'});
+  renderModalSuppliers();
+}
+function remSupplier(type,sid){
+  if(type==='uk')modalUKSuppliers=modalUKSuppliers.filter(x=>x.id!==sid);
+  else modalFacSuppliers=modalFacSuppliers.filter(x=>x.id!==sid);
+  renderModalSuppliers();
+}
+function remTier(type,sid,tid){
+  const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(s)s.tiers=s.tiers.filter(t=>t.id!==tid);
+  renderModalSuppliers();
+}
+function updSupplierName(type,sid,val){
+  const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(s)s.name=val;
+}
+function updTier(type,sid,tid,field,val){
+  const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(!s)return;
+  const t=s.tiers.find(x=>x.id===tid);if(t)t[field]=field==='qty'||field==='price'?parseFloat(val)||0:val;
+}
+
+function renderModalSuppliers(){
+  ['uk','fac'].forEach(type=>{
+    const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+    const wrap=document.getElementById(type==='uk'?'ukSuppliers':'facSuppliers');
+    if(!wrap)return;
+    if(!arr.length){wrap.innerHTML='<p class="cost-empty">No suppliers added yet.</p>';return;}
+    const currs=availCurrencies();
+    wrap.innerHTML=arr.map(s=>`
+      <div class="supplier-block">
+        <div class="supplier-block-head">
+          <div class="field" style="flex:1;margin-right:8px;margin-bottom:0;">
+            <input value="${esc(s.name)}" placeholder="Supplier name" style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:#fff;width:100%;" oninput="updSupplierName('${type}',${s.id},this.value)">
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-outline btn-xs" onclick="addTierToSupplier('${type}',${s.id})">+ Tier</button>
+            <button class="btn btn-danger btn-xs" onclick="remSupplier('${type}',${s.id})">✕</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:80px 100px 90px auto;gap:6px;margin-bottom:4px;">
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">Qty (${vv('ingUnit')||'kg'})</span>
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">Price</span>
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">Currency</span>
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">£/kg equiv.</span>
+        </div>
+        ${s.tiers.map(t=>{
+          const gbp=t.price&&t.qty?toGBP(t.price,t.currency||'GBP')/Math.max(1,t.qty):0;
+          return `<div style="display:grid;grid-template-columns:80px 100px 90px auto 28px;gap:6px;align-items:center;margin-bottom:5px;">
+            <input type="number" step="0.1" value="${t.qty}" placeholder="1" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updTier('${type}',${s.id},${t.id},'qty',this.value)">
+            <input type="number" step="0.01" value="${t.price}" placeholder="0.00" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updTier('${type}',${s.id},${t.id},'price',this.value)">
+            <select style="padding:5px 6px;font-size:12px;border-radius:6px;" onchange="updTier('${type}',${s.id},${t.id},'currency',this.value)">${currs.map(c=>`<option value="${c}"${(t.currency||'GBP')===c?' selected':''}>${c}</option>`).join('')}</select>
+            <span style="font-size:11px;font-family:'DM Mono',monospace;color:${gbp>0?'var(--success)':'#9A80B0'};">${gbp>0?'£'+gbp.toFixed(3):'—'}</span>
+            <button class="btn btn-danger btn-xs" onclick="remTier('${type}',${s.id},${t.id})">✕</button>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  });
+}
+
+// INGREDIENT MODAL
+function openIngModal(id){
+  editIngId=id||null;
+  const ing=id?ingredients.find(x=>x.id===id):null;
+  document.getElementById('ingModalTitle').textContent=ing?'Edit ingredient':'Add ingredient';
+  document.getElementById('ingName').value=ing?ing.name:'';
+  document.getElementById('ingUnit').value=ing?ing.unit:'kg';
+  document.getElementById('ingNotes').value=ing?ing.notes:'';
+  modalUKSuppliers=ing?(ing.ukSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({id:cid(),...t}))})):[];
+  modalFacSuppliers=ing?(ing.facSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({id:cid(),...t}))})):[];
+  if(!modalUKSuppliers.length)modalUKSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
+  if(!modalFacSuppliers.length)modalFacSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
+  renderModalSuppliers();
+  document.getElementById('ingModal').style.display='block';
+}
+function closeIngModal(){document.getElementById('ingModal').style.display='none';}
+async function saveIngredient(){
+  const name=vv('ingName').trim();if(!name){alert('Please enter a name.');return;}
+  function readSuppliersFromDOM(type){
+    const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
+    // Read names fresh from DOM inputs
+    const domInputs=document.querySelectorAll('#'+(type==='uk'?'ukSuppliers':'facSuppliers')+' input[placeholder="Supplier name"]');
+    domInputs.forEach((inp,i)=>{if(arr[i])arr[i].name=inp.value.trim();});
+    return arr.filter(s=>s.name||s.tiers.some(t=>t.price)).map(s=>{
+      const sname=s.name||'';
+      const tiers=s.tiers.filter(t=>t.price).map((t,ti)=>{
+        const tid=stableId(sname+'tier'+ti+(t.price||0)+(t.qty||1));
+        return {id:tid,qty:parseFloat(t.qty)||1,price:parseFloat(t.price),currency:t.currency||'GBP'};
+      });
+      const sid=stableId(sname+tiers.map(t=>t.price).join(''));
+      return {id:sid,name:sname,tiers};
+    });
+  }
+  const cleanSuppliers=type=>readSuppliersFromDOM(type);
+  const data={id:editIngId||uid(),name,unit:vv('ingUnit'),notes:vv('ingNotes'),ukSuppliers:cleanSuppliers('uk'),facSuppliers:cleanSuppliers('fac')};
+  if(editIngId){const idx=ingredients.findIndex(x=>x.id===editIngId);if(idx>-1)ingredients[idx]=data;}
+  else{ingredients.push(data);}
+  await saveIngToDB(data);
+  closeIngModal();renderIngTable();refreshRecipeDropdowns();toast('Ingredient saved');
+}
+async function deleteIng(id){if(!confirm('Delete this ingredient?'))return;ingredients=ingredients.filter(x=>x.id!==id);await delIngDB(id);renderIngTable();}
+
+function renderIngTable(){
+  const wrap=document.getElementById('ingTable');
+  if(!ingredients.length){wrap.innerHTML='<div class="empty-state">No ingredients yet — click <strong>Add ingredient</strong> to start.</div>';return;}
+  const rows=ingredients.map(ing=>{
+    const sp=savingPct(ing),src=cheaperSource(ing);
+    const ukBest=cheapestGBPPrice(ing,'uk'),facBest=cheapestGBPPrice(ing,'fac');
+    const ukCount=ing.ukSuppliers?.length||0,facCount=ing.facSuppliers?.length||0;
+    const saveBadge=sp!==null?(sp>0?`<span class="saving-pill">Save ${sp.toFixed(0)}%</span>`:`<span class="worse-pill">Factory costs more</span>`):'';
+    const recBadge=src==='factory'?`<span class="badge badge-green">Factory</span>`:src==='uk'?`<span class="badge badge-purple">UK</span>`:`<span class="badge badge-grey">—</span>`;
+    return `<tr>
+      <td><strong style="font-size:13px;">${esc(ing.name)}</strong>${ing.notes?`<br><span style="font-size:11px;color:#9A80B0;">${esc(ing.notes)}</span>`:''}</td>
+      <td><span style="font-size:11px;color:#9A80B0;">${ukCount} supplier${ukCount!==1?'s':''}</span><br><span class="mono">${ukBest>0?'£'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${facCount} supplier${facCount!==1?'s':''}</span><br><span class="mono">${facBest>0?'£'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
+      <td>${saveBadge}</td><td>${recBadge}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="openIngModal('${ing.id}')">Edit</button><button class="btn btn-danger btn-xs" style="margin-left:4px;" onclick="deleteIng('${ing.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>Best UK price/${vv('ingUnit')||'unit'}</th><th>Best factory price</th><th>Saving</th><th>Best source</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function exportIngredients(){
+  const heads=['Name','Unit','Notes','UK Suppliers (count)','Best UK price/unit £','Factory Suppliers (count)','Best Factory price/unit £','Saving %','Best Source'];
+  const rows=ingredients.map(i=>[i.name,i.unit,i.notes,i.ukSuppliers?.length||0,cheapestGBPPrice(i,'uk').toFixed(3),i.facSuppliers?.length||0,cheapestGBPPrice(i,'fac').toFixed(3),savingPct(i)?.toFixed(1)||'—',cheaperSource(i)]);
+  dlCSV([heads,...rows],'kn_ingredients');
+}
+
+// ── PACKAGING LIBRARY ─────────────────────────────────────────────────
+let packagingItems=[];
+let editPkgId=null;
+let modalPkgUKSuppliers=[],modalPkgFacSuppliers=[];
+let pkgRecipeRows=[];
+
+async function loadPackaging(){
+  try{
+    let items=[];
+    try{items=await sbGet('nns_packaging');}catch(e){console.warn('Packaging table error:',e);setSS('err','⚠ Packaging table missing — see settings');return;}
+    packagingItems=(items||[]).map(i=>({
+      id:i.id,name:i.name,category:i.category||'other',unit:i.unit||'unit',notes:i.notes||'',
+      ukSuppliers:Array.isArray(i.supplier_uk)?i.supplier_uk:[],
+      facSuppliers:Array.isArray(i.supplier_fac)?i.supplier_fac:[]
+    }));
+  }catch(e){console.error('Packaging load error:',e);}
+}
+async function savePkgToDB(item){
+  try{
+    const pkg_payload={id:item.id,name:item.name,category:item.category||'',unit:item.unit||'unit',notes:item.notes||'',supplier_uk:JSON.parse(JSON.stringify(item.ukSuppliers||[])),supplier_fac:JSON.parse(JSON.stringify(item.facSuppliers||[])),price_uk:cheapestPkgGBP(item,'uk')||0,price_fac:cheapestPkgGBP(item,'fac')||0};await sbUp('nns_packaging',pkg_payload);
+    setSS('ok','✓ Saved');
+  }catch(e){setSS('err','⚠ Save failed');}
+}
+async function delPkgFromDB(id){try{await sbDel('nns_packaging',id);}catch(e){setSS('err','⚠ Failed');}}
+
+function cheapestPkgGBP(item,type){
+  const suppliers=type==='uk'?item.ukSuppliers:item.facSuppliers;
+  if(!suppliers||!suppliers.length)return 0;
+  best=Infinity;
+  for(const s of suppliers)for(const t of (s.tiers||[])){
+    if(t.price){const p=toGBP(t.price,t.currency||'GBP')/Math.max(1,t.qty||1);if(p<best)best=p;}
+  }
+  return best===Infinity?0:best;
+}
+function bestPkgPrice(item){
+  const uk=cheapestPkgGBP(item,'uk'),fac=cheapestPkgGBP(item,'fac');
+  if(!uk&&!fac)return 0;if(!uk)return fac;if(!fac)return uk;return Math.min(uk,fac);
+}
+
+function openPkgModal(id){
+  editPkgId=id||null;
+  const item=id?packagingItems.find(x=>x.id===id):null;
+  document.getElementById('pkgModalTitle').textContent=item?'Edit packaging item':'Add packaging item';
+  document.getElementById('pkgName').value=item?item.name:'';
+  document.getElementById('pkgCategory').value=item?item.category:'jar';
+  document.getElementById('pkgUnit').value=item?item.unit:'unit';
+  document.getElementById('pkgNotes').value=item?item.notes:'';
+  modalPkgUKSuppliers=item?(item.ukSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({id:cid(),...t}))})):[];
+  modalPkgFacSuppliers=item?(item.facSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({id:cid(),...t}))})):[];
+  if(!modalPkgUKSuppliers.length)modalPkgUKSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
+  if(!modalPkgFacSuppliers.length)modalPkgFacSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
+  renderPkgModalSuppliers();
+  document.getElementById('pkgModal').style.display='block';
+}
+function closePkgModal(){document.getElementById('pkgModal').style.display='none';}
+
+function addPkgSupplierRow(type){
+  const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;
+  arr.push({id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]});
+  renderPkgModalSuppliers();
+}
+function addPkgTier(type,sid){
+  const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(s)s.tiers.push({id:cid(),qty:'',price:'',currency:'GBP'});
+  renderPkgModalSuppliers();
+}
+function remPkgSupplier(type,sid){
+  if(type==='uk')modalPkgUKSuppliers=modalPkgUKSuppliers.filter(x=>x.id!==sid);
+  else modalPkgFacSuppliers=modalPkgFacSuppliers.filter(x=>x.id!==sid);
+  renderPkgModalSuppliers();
+}
+function remPkgTier(type,sid,tid){
+  const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(s)s.tiers=s.tiers.filter(t=>t.id!==tid);
+  renderPkgModalSuppliers();
+}
+function updPkgSupName(type,sid,val){const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;const s=arr.find(x=>x.id===sid);if(s)s.name=val;}
+function updPkgTier(type,sid,tid,field,val){
+  const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;
+  const s=arr.find(x=>x.id===sid);if(!s)return;
+  const t=s.tiers.find(x=>x.id===tid);if(t)t[field]=field==='qty'||field==='price'?parseFloat(val)||0:val;
+}
+
+function renderPkgModalSuppliers(){
+  ['uk','fac'].forEach(type=>{
+    const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;
+    const wrap=document.getElementById(type==='uk'?'pkgUKSuppliers':'pkgFacSuppliers');
+    if(!wrap)return;
+    if(!arr.length){wrap.innerHTML='<p class="cost-empty">No suppliers added yet.</p>';return;}
+    const currs=availCurrencies();
+    const unitLabel=vv('pkgUnit')||'unit';
+    wrap.innerHTML=arr.map(s=>`
+      <div class="supplier-block">
+        <div class="supplier-block-head">
+          <div class="field" style="flex:1;margin-right:8px;margin-bottom:0;">
+            <input value="${esc(s.name)}" placeholder="Supplier name" style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:#fff;width:100%;" oninput="updPkgSupName('${type}',${s.id},this.value)">
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-outline btn-xs" onclick="addPkgTier('${type}',${s.id})">+ Tier</button>
+            <button class="btn btn-danger btn-xs" onclick="remPkgSupplier('${type}',${s.id})">✕</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:80px 100px 90px auto;gap:6px;margin-bottom:4px;">
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">Qty (${unitLabel})</span>
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">Price</span>
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">Currency</span>
+          <span style="font-size:10px;font-weight:600;color:#9A80B0;text-transform:uppercase;">£/unit equiv.</span>
+        </div>
+        ${s.tiers.map(t=>{
+          const gbp=t.price&&t.qty?toGBP(t.price,t.currency||'GBP')/Math.max(1,t.qty):0;
+          return `<div style="display:grid;grid-template-columns:80px 100px 90px auto 28px;gap:6px;align-items:center;margin-bottom:5px;">
+            <input type="number" step="1" value="${t.qty}" placeholder="1" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updPkgTier('${type}',${s.id},${t.id},'qty',this.value)">
+            <input type="number" step="0.01" value="${t.price}" placeholder="0.00" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updPkgTier('${type}',${s.id},${t.id},'price',this.value)">
+            <select style="padding:5px 6px;font-size:12px;border-radius:6px;" onchange="updPkgTier('${type}',${s.id},${t.id},'currency',this.value)">${currs.map(c=>`<option value="${c}"${(t.currency||'GBP')===c?' selected':''}>${c}</option>`).join('')}</select>
+            <span style="font-size:11px;font-family:'DM Mono',monospace;color:${gbp>0?'var(--success)':'#9A80B0'};">${gbp>0?'£'+gbp.toFixed(3):'—'}</span>
+            <button class="btn btn-danger btn-xs" onclick="remPkgTier('${type}',${s.id},${t.id})">✕</button>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  });
+}
+
+async function savePkgItem(){
+  const name=vv('pkgName').trim();if(!name){alert('Please enter a name.');return;}
+  const cleanS=arr=>arr.filter(s=>s.name||s.tiers.some(t=>t.price)).map(s=>({name:s.name,tiers:s.tiers.filter(t=>t.price).map(t=>({qty:t.qty||1,price:t.price,currency:t.currency||'GBP'}))}));
+  const data={id:editPkgId||uid(),name,category:vv('pkgCategory'),unit:vv('pkgUnit'),notes:vv('pkgNotes'),ukSuppliers:cleanS(modalPkgUKSuppliers),facSuppliers:cleanS(modalPkgFacSuppliers)};
+  if(editPkgId){const idx=packagingItems.findIndex(x=>x.id===editPkgId);if(idx>-1)packagingItems[idx]=data;}
+  else{packagingItems.push(data);}
+  await savePkgToDB(data);
+  closePkgModal();renderPkgTable();refreshPkgDropdowns();toast('Packaging item saved');
+}
+async function duplicatePackaging(id){
+  const p=packagingItems.find(x=>x.id===id);
+  if(!p)return;
+  const newPkg=JSON.parse(JSON.stringify(p));
+  newPkg.id=uid();
+  newPkg.name=p.name+' (Copy)';
+  packagingItems.push(newPkg);
+  try{
+    const{id:pid,...rest}=newPkg;
+    await sbUp('nns_packaging',{id:pid,data:rest});
+    setSS('ok','✓ Packaging copied');
+  }catch(e){setSS('err','⚠ Copy saved locally only');}
+  renderPkgTable();
+  openPkgModal(newPkg.id);
+}
+
+async function deletePkg(id){
+  if(!confirm('Delete this item?'))return;
+  packagingItems=packagingItems.filter(x=>x.id!==id);
+  await delPkgFromDB(id);renderPkgTable();
+}
+
+const catIcons={jar:'🫙',bottle:'🍶',box:'📦',label:'🏷',pouch:'👜',tube:'🧴',lid:'🔩',bag:'🛍',other:'📋'};
+
+function renderPkgTable(){
+  const wrap=document.getElementById('pkgTable');
+  if(!packagingItems.length){wrap.innerHTML='<div class="empty-state">No packaging items yet — click <strong>Add item</strong> to build your library.</div>';return;}
+  const rows=packagingItems.map(item=>{
+    const ukBest=cheapestPkgGBP(item,'uk'),facBest=cheapestPkgGBP(item,'fac');
+    const ukCount=item.ukSuppliers?.length||0,facCount=item.facSuppliers?.length||0;
+    const sp=ukBest&&facBest?((ukBest-facBest)/ukBest*100):null;
+    const saveBadge=sp!==null?(sp>0?`<span class="saving-pill">Save ${sp.toFixed(0)}%</span>`:`<span class="worse-pill">Factory costs more</span>`):'';
+    const icon=catIcons[item.category]||'📋';
+    return `<tr>
+      <td>${icon} <strong style="font-size:13px;">${esc(item.name)}</strong>${item.notes?`<br><span style="font-size:11px;color:#9A80B0;">${esc(item.notes)}</span>`:''}</td>
+      <td><span style="font-size:10px;color:#9A80B0;text-transform:uppercase;">${item.category}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${ukCount} supplier${ukCount!==1?'s':''}</span><br><span class="mono">${ukBest>0?'£'+ukBest.toFixed(3)+'/'+item.unit:'—'}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${facCount} supplier${facCount!==1?'s':''}</span><br><span class="mono">${facBest>0?'£'+facBest.toFixed(3)+'/'+item.unit:'—'}</span></td>
+      <td>${saveBadge}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="openPkgModal('${item.id}')">Edit</button><button class="btn btn-outline btn-xs" style="margin-left:4px;" onclick="duplicatePackaging('${item.id}')">⧉ Copy</button><button class="btn btn-danger btn-xs" style="margin-left:4px;" onclick="deletePkg('${item.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`<table class="tbl"><thead><tr><th>Item</th><th>Type</th><th>Best UK price</th><th>Best factory price</th><th>Saving</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function exportPackaging(){
+  const heads=['Name','Category','Unit','UK Suppliers','Best UK £/unit','Factory Suppliers','Best Factory £/unit','Notes'];
+  const rows=packagingItems.map(i=>[i.name,i.category,i.unit,i.ukSuppliers?.length||0,cheapestPkgGBP(i,'uk').toFixed(3),i.facSuppliers?.length||0,cheapestPkgGBP(i,'fac').toFixed(3),i.notes]);
+  dlCSV([heads,...rows],'kn_packaging');
+}
+
+// PACKAGING IN PRODUCTS
+function addPkgRow(pkgId='',qty=1){pkgRecipeRows.push({id:cid(),pkgId,qty});renderPkgRecipeRows();}
+function refreshPkgDropdowns(){renderPkgRecipeRows();}
+function renderPkgRecipeRows(){
+  const wrap=document.getElementById('pkgRecipeRows');
+  if(!wrap)return;
+  if(!pkgRecipeRows.length){wrap.innerHTML='<p class="cost-empty">No packaging items added. Click "+ Add item" above.</p>';updatePkgRecipeCost();return;}
+  wrap.innerHTML=pkgRecipeRows.map((r,i)=>{
+    const opts=packagingItems.map(item=>`<option value="${item.id}"${item.id===r.pkgId?' selected':''}>${catIcons[item.category]||'📋'} ${esc(item.name)}</option>`).join('');
+    return `<div class="cost-row">
+      <div class="field">${i===0?'<label>Packaging item</label>':''}<select onchange="updPkgRow(${r.id},'pkgId',this.value)"><option value="">— select —</option>${opts}</select></div>
+      <div class="field">${i===0?'<label>Qty per batch</label>':''}<input type="number" step="1" min="1" value="${r.qty}" placeholder="1" oninput="updPkgRow(${r.id},'qty',this.value)"></div>
+      <button class="btn btn-danger btn-sm" style="align-self:end;padding:5px 8px;" onclick="remPkgRow(${r.id})">✕</button>
+    </div>`;
+  }).join('');
+  updatePkgRecipeCost();
+}
+function updPkgRow(id,f,val){const r=pkgRecipeRows.find(x=>x.id===id);if(r){r[f]=f==='qty'?parseFloat(val)||1:val;updatePkgRecipeCost();}}
+function remPkgRow(id){pkgRecipeRows=pkgRecipeRows.filter(x=>x.id!==id);renderPkgRecipeRows();}
+function pkgBatchCostLive(){
+  let t=0;
+  for(const r of pkgRecipeRows){if(!r.pkgId)continue;const item=packagingItems.find(x=>x.id===r.pkgId);if(!item)continue;t+=bestPkgPrice(item)*(parseFloat(r.qty)||1);}
+  return t;
+}
+function pkgBatchCostFromSaved(p){
+  t=0;
+  for(const r of (p.pkgRecipe||[])){const item=packagingItems.find(x=>x.id===r.pkgId);if(!item)continue;t+=bestPkgPrice(item)*(parseFloat(r.qty)||1);}
+  return t;
+}
+function updatePkgRecipeCost(){const c=pkgBatchCostLive();const el=document.getElementById('pkgRecipeCostSummary');if(el&&pkgRecipeRows.length)el.innerHTML=`<strong>Packaging cost (batch): £${c.toFixed(2)}</strong>`;}
+
+
+
+// ── PACKAGING ITEMS (per unit) ─────────────────────────────────────────
+function addPkgItem(pkgId='', qty=1) {
+  pkgItems.push({id:cid(), pkgId, qty});
+  renderPkgItems();
+}
+
+function remPkgItem(id) {
+  pkgItems = pkgItems.filter(x=>x.id!==id);
+  renderPkgItems();
+  recalcUnitCost();
+}
+
+function updPkgItem(id, f, val) {
+  const r = pkgItems.find(x=>x.id===id);
+  if(r) r[f] = f==='qty' ? parseFloat(val)||0 : val;
+  recalcUnitCost();
+}
+
+function renderPkgItems() {
+  const wrap = document.getElementById('pkgItemRows');
+  const noMsg = document.getElementById('noPkgItems');
+  if(!wrap) return;
+  if(!pkgItems.length) {
+    wrap.innerHTML = '';
+    if(noMsg) noMsg.style.display = 'block';
+    recalcUnitCost();
+    return;
+  }
+  if(noMsg) noMsg.style.display = 'none';
+  const pkgOpts = '<option value="">— select from library —</option>' +
+    packagingItems.map(p=>`<option value="${p.id}">${esc(p.name)} (£${bestPkgPrice(p).toFixed(4)}/unit)</option>`).join('');
+  wrap.innerHTML = pkgItems.map((pi, i)=>{
+    const selOpts = pkgOpts.replace(`value="${pi.pkgId}"`, `value="${pi.pkgId}" selected`);
+    const pkgItem = pi.pkgId ? packagingItems.find(x=>x.id===pi.pkgId) : null;
+    const unitCost = pkgItem ? bestPkgPrice(pkgItem) * (parseFloat(pi.qty)||0) : 0;
+    return `<div style="display:grid;grid-template-columns:1fr 100px 90px 34px;gap:8px;align-items:end;margin-bottom:8px;padding:10px;background:${i%2===0?'var(--cream-dark)':'white'};border-radius:8px;border:1px solid var(--border);">
+      <div class="field">${i===0?'<label>Packaging item</label>':''}
+        <select onchange="updPkgItem(${pi.id},'pkgId',this.value)">${selOpts}</select></div>
+      <div class="field">${i===0?'<label>Qty/unit</label>':''}
+        <input type="number" step="0.01" min="0" value="${pi.qty}" placeholder="e.g. 1" oninput="updPkgItem(${pi.id},'qty',this.value)"></div>
+      <div class="field" style="text-align:right;">${i===0?'<label>Cost/unit</label>':''}
+        <div style="padding:8px;font-size:13px;font-weight:600;color:var(--purple);">${unitCost>0?'£'+unitCost.toFixed(4):'—'}</div></div>
+      <button class="btn btn-danger btn-sm" style="align-self:end;padding:6px 8px;" onclick="remPkgItem(${pi.id})">✕</button>
+    </div>`;
+  }).join('');
+  recalcUnitCost();
+}
+
+function getTotalPkgCostPerUnit() {
+  return pkgItems.reduce((sum, pi)=>{
+    const pkgItem = pi.pkgId ? packagingItems.find(x=>x.id===pi.pkgId) : null;
+    return sum + (pkgItem ? bestPkgPrice(pkgItem) * (parseFloat(pi.qty)||0) : 0);
+  }, 0);
+}
+
+function recalcUnitCost() {
+  // Read batch + fill data
+  const batchSize = parseFloat(document.getElementById('fBatchSize')?.value)||0;
+  const batchUnit = document.getElementById('fBatchUnit')?.value||'g';
+  const wastePct  = 0; // Waste removed — always 0
+  const labour    = parseFloat(document.getElementById('fLabour')?.value)||0;
+  const fillSize  = parseFloat(document.getElementById('fFillSize')?.value)||0;
+  const usable    = batchSize*(1-wastePct/100);
+  const usableBase = batchUnit==='kg'?usable*1000:usable;
+
+  // Units per batch
+  let units = 0;
+  if(fillSize>0 && usableBase>0) {
+    const raw = usableBase/fillSize;
+    units = Math.round(raw);
+  }
+
+  // Units display
+  const dispEl = document.getElementById('unitsBatchDisplay');
+  if(dispEl) dispEl.textContent = units>0?`→ ${units} units from batch`:'Enter batch size & fill size above';
+
+  // Ingredient cost per unit — usableBase is already in g/ml, no further conversion needed
+  const toG = usableBase;
+  let totalIngCost = 0;
+  formulaRows.forEach(r=>{
+    const ing = ingredients.find(x=>x.id===r.ingId);
+    const pct = parseFloat(r.pct)||0;
+    const ingQty = toG * pct/100;
+    if(ing && ingQty>0) totalIngCost += getIngCostPerItem(ing, r.supplierId, r.tierId) * ingQty;
+  });
+
+  const ingPerUnit  = units>0 ? totalIngCost/units : 0;
+  const labPerUnit  = units>0 ? labour/units : 0;
+  const pkgPerUnit  = getTotalPkgCostPerUnit();
+  const truePerUnit = ingPerUnit + labPerUnit + pkgPerUnit;
+
+  // Update summary
+  const sumEl = document.getElementById('unitCostSummary');
+  if(sumEl) sumEl.style.display = units>0 ? 'block' : 'none';
+  const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent=val; };
+  set('ucs-units', units>0?units:'—');
+  set('ucs-ing',   ingPerUnit>0?'£'+ingPerUnit.toFixed(4):'—');
+  set('ucs-lab',   labPerUnit>0?'£'+labPerUnit.toFixed(4):'—');
+  set('ucs-pkg',   pkgPerUnit>0?'£'+pkgPerUnit.toFixed(4):'—');
+  set('ucs-total', truePerUnit>0?'£'+truePerUnit.toFixed(4):'—');
+}
+// ── FORMULA CALCULATOR ─────────────────────────────────────────────────
+let formulaRows = [];
+let fillSizes = [];
+let pkgItems = []; // new per-unit packaging items
+
+function addFormulaRow(ingId='', pct='', supplierId='', tierId='') {
+  formulaRows.push({id:cid(), ingId, pct, supplierId, tierId});
+  renderFormula();
+}
+
+function addFillSize(size='', unit='', pkgId='') {
+  fillSizes.push({id:cid(), size, unit:'ml', pkgId});
+  renderFormula();
+}
+
+function remFormulaRow(id) { formulaRows=formulaRows.filter(x=>x.id!==id); renderFormula(); }
+function remFillSize(id) { fillSizes=fillSizes.filter(x=>x.id!==id); renderFormula(); }
+
+function updFormula(id, f, val) {
+  const r=formulaRows.find(x=>x.id===id);
+  if(r){
+    r[f]=val;
+    if(f==='ingId'){r.supplierId='';r.tierId='';}
+    if(f==='supplierId'){r.tierId='';}
+  }
+  // Full re-render only when ingredient or supplier changes (need new dropdown options)
+  // For pct changes just update costs inline
+  if(f==='pct'){
+    updateFormulaCosts();
+  } else {
+    renderFormula();
+  }
+}
+
+function updateFormulaCosts() {
+  // Update just the cost/qty display without rebuilding dropdowns
+  const batchSize = parseFloat(document.getElementById('fBatchSize').value)||0;
+  const batchUnit = document.getElementById('fBatchUnit').value||'g';
+  const wastePct  = 0; // Waste removed
+  const usable    = batchSize*(1-wastePct/100);
+  const toG       = batchUnit==='kg'?usable*1000:usable;
+  formulaRows.forEach(r=>{
+    const ing=ingredients.find(x=>x.id===r.ingId);
+    const pct=parseFloat(r.pct)||0;
+    const ingQty=toG*pct/100;
+    const ingCost=ing&&ingQty>0?getIngCostPerItem(ing,r.supplierId,r.tierId)*ingQty:0;
+    const qtyDisplay=ingQty>0?(batchUnit==='kg'?(ingQty/1000).toFixed(4)+'kg':ingQty.toFixed(2)+batchUnit):'—';
+    const costDisplay=ingCost>0?'£'+ingCost.toFixed(4):'—';
+    const qtyEl=document.querySelector('[data-formula-qty="'+r.id+'"]');
+    const costEl=document.querySelector('[data-formula-cost="'+r.id+'"]');
+    if(qtyEl)qtyEl.textContent=qtyDisplay;
+    if(costEl)costEl.textContent=costDisplay;
+  });
+  updateFormulaSummary();
+}
+
+function updFillSize(id, f, val) {
+  const r=fillSizes.find(x=>x.id===id); if(r) r[f]=val;
+  updateFormulaSummary();
+}
+
+function renderFormula() {
+  const wrap = document.getElementById('formulaRows');
+  if(!wrap) return;
+
+  const batchSize = parseFloat(document.getElementById('fBatchSize').value)||0;
+  const batchUnit = document.getElementById('fBatchUnit').value||'g';
+  const wastePct  = 0; // Waste removed
+  const labour    = parseFloat(document.getElementById('fLabour').value)||0;
+  const usable    = batchSize * (1 - wastePct/100);
+
+  // Convert usable batch to grams/ml for cost calc
+  // kg->g *1000, g/ml stay as is
+  const toG = batchUnit==='kg' ? usable*1000 : usable;
+
+  // Render formula ingredient rows
+  if(!formulaRows.length) {
+    wrap.innerHTML='<p class="cost-empty">No formula ingredients yet — click + Add ingredient.</p>';
+  } else {
+    wrap.innerHTML = formulaRows.map((r,i) => {
+      const ing = ingredients.find(x=>x.id===r.ingId);
+      const ingOpts = ingredients.map(x=>`<option value="${x.id}"${x.id===r.ingId?' selected':''}>${esc(x.name)} (${x.unit})</option>`).join('');
+      const {supplierOpts, tierOpts} = getSupplierTierOpts(ing, r);
+
+      // Calculate qty and cost
+      const pct = parseFloat(r.pct)||0;
+      const ingQty = toG * pct/100; // grams/ml of this ingredient
+      let ingCost = 0;
+      if(ing && ingQty>0) {
+        // getIngCostPerItem returns cost per g/ml
+        ingCost = getIngCostPerItem(ing, r.supplierId, r.tierId) * ingQty;
+      }
+
+      // Show qty in appropriate unit based on ingredient unit
+      const ingUnit = (ing&&ing.unit)||batchUnit;
+      let qtyDisplay = '—';
+      if(ingQty>0){
+        if(ingUnit==='kg') qtyDisplay=(ingQty/1000).toFixed(4)+'kg';
+        else if(ingUnit==='L') qtyDisplay=(ingQty/1000).toFixed(4)+'L';
+        else qtyDisplay=ingQty.toFixed(2)+ingUnit;
+      }
+      const costDisplay = ingCost>0 ? '£'+ingCost.toFixed(4) : '—';
+
+      return `<div style="display:grid;grid-template-columns:1.5fr 70px 1fr 1fr 100px 80px 32px;gap:6px;align-items:end;margin-bottom:6px;padding:8px;background:${i%2===0?'#fafafa':'#fff'};border-radius:8px;border:1px solid var(--border);">
+        <div class="field">${i===0?'<label>Ingredient</label>':''}
+          <select onchange="updFormula(${r.id},'ingId',this.value)"><option value="">— select —</option>${ingOpts}</select></div>
+        <div class="field">${i===0?'<label>%</label>':''}
+          <input type="number" step="0.1" min="0" max="100" value="${r.pct}" placeholder="e.g. 20" oninput="formulaRows.find(x=>x.id===${r.id}).pct=this.value;updateFormulaCosts();" style="font-weight:600;color:var(--purple);"></div>
+        <div class="field">${i===0?'<label>Supplier</label>':''}
+          <select onchange="updFormula(${r.id},'supplierId',this.value)">${supplierOpts}</select></div>
+        <div class="field">${i===0?'<label>Price tier</label>':''}
+          <select onchange="updFormula(${r.id},'tierId',this.value)">${tierOpts}</select></div>
+        <div class="field" style="text-align:right;">${i===0?'<label>Qty in batch</label>':''}<div data-formula-qty="${r.id}" style="padding:8px;font-size:13px;font-weight:500;color:var(--bark-mid);">${qtyDisplay}</div></div>
+        <div class="field" style="text-align:right;">${i===0?'<label>Cost</label>':''}<div data-formula-cost="${r.id}" style="padding:8px;font-size:13px;font-weight:600;color:var(--purple);">${costDisplay}</div></div>
+        <button class="btn btn-danger btn-sm" style="align-self:end;padding:6px 8px;" onclick="remFormulaRow(${r.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  // % total
+  const totalPct = formulaRows.reduce((s,r)=>s+(parseFloat(r.pct)||0),0);
+  const pctEl = document.getElementById('formulaPctTotal');
+  if(pctEl && formulaRows.length) {
+    const diff = Math.abs(totalPct-100);
+    const col = diff<0.01?'var(--success)':diff<5?'var(--warn)':'var(--danger)';
+    pctEl.innerHTML = `<span style="color:${col}">Formula total: ${totalPct.toFixed(1)}% ${diff<0.01?'✓ Perfect':totalPct>100?'⚠ Over 100%':'⚠ Under 100% — should total 100%'}</span>`;
+  } else if(pctEl) { pctEl.innerHTML=''; }
+
+  // Batch cost summary
+  let totalIngCost = 0;
+  formulaRows.forEach(r => {
+    const ing = ingredients.find(x=>x.id===r.ingId);
+    const pct = parseFloat(r.pct)||0;
+    const ingQty = toG * pct/100;
+    if(ing && ingQty>0) totalIngCost += getIngCostPerItem(ing, r.supplierId, r.tierId) * ingQty;
+  });
+
+  updateFormulaSummaryFull(batchSize,batchUnit,wastePct,usable,totalIngCost,labour);
+  recalcUnitCost();
+  renderPkgItems();
+
+  // Fill sizes
+  // Render fill sizes via dedicated function
+  renderFillSizes(batchUnit, usable, totalIngCost, labour);
+}
+
+// ── RECIPE ─────────────────────────────────────────────────────────────
+function addRecipeRow(ingId="",qty="",supplierId="",tierId=""){recipeRows.push({id:cid(),ingId,qty,supplierId,tierId});renderRecipeRows();}
+function refreshRecipeDropdowns(){renderRecipeRows();}
+function getSupplierTierOpts(ing,r){
+  if(!ing)return{supplierOpts:'',tierOpts:''};
+  const allS=[...(ing.ukSuppliers||[]).map(s=>({...s,type:'uk'})),...(ing.facSuppliers||[]).map(s=>({...s,type:'fac'}))];
+  // match by name if id not found (handles Supabase reload)
+  let matchedSupplierId=r.supplierId;
+  if(matchedSupplierId&&!allS.find(s=>s.id===matchedSupplierId)){
+    matchedSupplierId=''; // reset if not found
+  }
+  const bestPrice=bestPricePerKg(ing);
+  const cheapestLabel=bestPrice>0?`Cheapest auto (£${bestPrice.toFixed(3)}/${ing.unit})`:'Cheapest auto';
+  const supplierOpts=`<option value="">${cheapestLabel}</option>`+allS.map(s=>{
+    const sp=cheapestGBPPrice({ukSuppliers:s.type==='uk'?[s]:[],facSuppliers:s.type==='fac'?[s]:[]},'uk')||cheapestGBPPrice({ukSuppliers:s.type==='uk'?[s]:[],facSuppliers:s.type==='fac'?[s]:[]},'fac');
+    return `<option value="${s.id}"${s.id===matchedSupplierId?' selected':''}>${s.type==='uk'?'🇬🇧':'🏭'} ${esc(s.name||'Unnamed')}</option>`;
+  }).join('');
+  const selS=allS.find(s=>s.id===matchedSupplierId);
+  const tierOpts=selS
+    ?'<option value="">Best tier</option>'+(selS.tiers||[]).map(t=>`<option value="${t.id}"${t.id===r.tierId?' selected':''}>${t.qty}${ing.unit} @ ${t.currency||'GBP'} ${t.price}</option>`).join('')
+    :`<option value="">All tiers (auto)</option>`;
+  return{supplierOpts,tierOpts};
+}
+function renderRecipeRows(){
+  const wrap=document.getElementById('recipeRows');
+  if(!recipeRows.length){wrap.innerHTML='<p class="cost-empty">No ingredients added yet.</p>';document.getElementById('recipeCostSummary').innerHTML='';return;}
+  wrap.innerHTML=recipeRows.map((r,i)=>{
+    const ing=ingredients.find(x=>x.id===r.ingId);
+    const ingOpts=ingredients.map(x=>`<option value="${x.id}"${x.id===r.ingId?' selected':''}>${esc(x.name)}</option>`).join('');
+    const{supplierOpts,tierOpts}=getSupplierTierOpts(ing,r);
+    return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 80px 34px;gap:6px;align-items:end;margin-bottom:6px;">
+      <div class="field">${i===0?'<label>Ingredient</label>':''}<select onchange="updRecipe(${r.id},'ingId',this.value)"><option value="">— select —</option>${ingOpts}</select></div>
+      <div class="field">${i===0?'<label>Supplier</label>':''}<select onchange="updRecipe(${r.id},'supplierId',this.value)">${supplierOpts}</select></div>
+      <div class="field">${i===0?'<label>Price tier</label>':''}<select onchange="updRecipe(${r.id},'tierId',this.value)">${tierOpts}</select></div>
+      <div class="field">${i===0?`<label>Qty (${ing?ing.unit:'g/ml'})</label>`:''}  <input type="number" step="0.1" value="${r.qty}" placeholder="${ing&&isPerUnit(ing.unit)?'1':'50'}" oninput="updRecipe(${r.id},'qty',this.value)"></div>
+      <button class="btn btn-danger btn-sm" style="align-self:end;padding:6px 8px;" onclick="remRecipe(${r.id})">✕</button>
+    </div>`;
+  }).join('');
+  updateRecipeCost();
+}
+function updRecipe(id,f,val){const r=recipeRows.find(x=>x.id===id);if(r){r[f]=val;if(f==='ingId'){r.supplierId='';r.tierId='';}if(f==='supplierId'){r.tierId='';}if(f==='qty'&&!val)return;renderRecipeRows();updateRecipeCost();}}
+function remRecipe(id){recipeRows=recipeRows.filter(x=>x.id!==id);renderRecipeRows();}
+
+function isPerUnit(unit){
+  // these units mean price is per single item — no divide by 1000
+  return ['unit','each','item','piece','pcs','pack'].includes((unit||'').toLowerCase());
+}
+function getIngCostPerG(ing,supplierId,tierId){
+  if(!ing)return 0;
+  const perUnit=isPerUnit(ing.unit);
+  const divisor=perUnit?1:1000; // per unit = no conversion, per kg/L = divide by 1000
+  const allS=[...(ing.ukSuppliers||[]).map(s=>({...s})),...(ing.facSuppliers||[]).map(s=>({...s}))];
+  if(supplierId){
+    const selS=allS.find(s=>s.id===supplierId);
+    if(selS){
+      if(tierId){
+        const selT=(selS.tiers||[]).find(t=>t.id===tierId);
+        if(selT&&selT.price&&selT.qty) return toGBP(parseFloat(selT.price),selT.currency||'GBP')/Math.max(1,parseFloat(selT.qty))/divisor;
+      }
+      best=Infinity;
+      for(const t of (selS.tiers||[])){
+        if(t.price&&t.qty){
+          const p=toGBP(parseFloat(t.price),t.currency||'GBP')/Math.max(1,parseFloat(t.qty));
+          if(p<best)best=p;
+        }
+      }
+      return best===Infinity?0:best/divisor;
+    }
+  }
+  return bestPricePerKg(ing)/divisor;
+}
+function getIngCostPerItem(ing,supplierId,tierId){
+  if(!ing)return 0;
+  const perUnit=isPerUnit(ing.unit);
+  const unit=(ing.unit||'').toLowerCase();
+  // div converts price-per-unit to cost-per-ml/g:
+  // kg/L: price is per 1000g/ml so div=1000
+  // ml/g: price is per 1 unit so div=1
+  // unit/each/pcs: price is per item so div=1
+  const div=perUnit?1:(unit==='ml'||unit==='g')?1:1000;
+  const allS=[...(ing.ukSuppliers||[]).map(s=>({...s})),...(ing.facSuppliers||[]).map(s=>({...s}))];
+
+  function costFromTier(t){
+    if(!t||!t.price)return Infinity;
+    return toGBP(parseFloat(t.price),t.currency||'GBP')/Math.max(1,parseFloat(t.qty)||1)/div;
+  }
+  function bestFromTiers(tiers){
+    best=Infinity;
+    for(const t of (tiers||[])){const p=costFromTier(t);if(p<best)best=p;}
+    return best===Infinity?0:best;
+  }
+
+  // Find supplier by ID OR by name (fallback for Supabase ID mismatch)
+  let selS=null;
+  if(supplierId){
+    selS=allS.find(s=>s.id===supplierId);
+    // fallback: match by index if only one supplier
+    if(!selS&&allS.length===1)selS=allS[0];
+  }
+
+  if(selS){
+    // Find tier by ID, fallback to first tier
+    let selT=tierId?(selS.tiers||[]).find(t=>t.id===tierId):null;
+    if(!selT&&selS.tiers&&selS.tiers.length)selT=selS.tiers[0];
+    if(selT&&selT.price)return costFromTier(selT);
+    return bestFromTiers(selS.tiers);
+  }
+
+  // No supplier match — cheapest across everything
+  let globalBest=Infinity;
+  for(const s of allS){const p=bestFromTiers(s.tiers);if(p>0&&p<globalBest)globalBest=p;}
+  return globalBest===Infinity?0:globalBest;
+}
+function recipeBatchCostLive(){
+  t=0;
+  for(const r of recipeRows){
+    if(!r.ingId||!r.qty)continue;
+    const ing=ingredients.find(x=>x.id===r.ingId);
+    if(!ing)continue;
+    t+=getIngCostPerItem(ing,r.supplierId,r.tierId)*(parseFloat(r.qty)||0);
+  }
+  return t;
+}
+function recipeBatchCostFromSaved(p){
+  t=0;
+  for(const r of (p.recipe||[])){
+    const ing=ingredients.find(x=>x.id===r.ingId);
+    if(!ing||!r.qty)continue;
+    t+=getIngCostPerItem(ing,r.supplierId||'',r.tierId||'')*(parseFloat(r.qty)||0);
+  }
+  return t;
+}
+function updateRecipeCost(){
+  const c=recipeBatchCostLive();
+  const el=document.getElementById('recipeCostSummary');
+  if(!el)return;
+  if(recipeRows.length){
+    const breakdown=recipeRows.map(r=>{
+      const ing=ingredients.find(x=>x.id===r.ingId);
+      if(!ing||!r.qty)return null;
+      const cost=getIngCostPerItem(ing,r.supplierId,r.tierId)*(parseFloat(r.qty)||0);
+      return `${ing.name}: £${cost.toFixed(4)}`;
+    }).filter(Boolean);
+    el.innerHTML=`<strong>Recipe ingredient cost (batch): £${c.toFixed(4)}</strong><br><span style="font-size:11px;color:#9A80B0;">${breakdown.join(' | ')}</span>`;
+  } else {
+    el.innerHTML='';
+  }
+}
+function recalc(){updateRecipeCost();}
+
+// MANUAL COSTS
+function addCost(s,n='',a=''){costs[s].push({id:cid(),name:n,amount:a});renderCosts(s);}
+function renderCosts(s){
+  const w=document.getElementById(s+'-costs');if(!w)return;
+  if(!costs[s].length){w.innerHTML='<p class="cost-empty">Nothing added.</p>';return;}
+  w.innerHTML=costs[s].map((c,i)=>`<div class="cost-row">
+    <div class="field">${i===0?'<label>Description</label>':''}<input value="${esc(c.name)}" placeholder="Description" oninput="updCost('${s}',${c.id},'name',this.value)"></div>
+    <div class="field">${i===0?'<label>Batch cost (£)</label>':''}<input type="number" step="0.01" value="${c.amount}" placeholder="0.00" oninput="updCost('${s}',${c.id},'amount',this.value)"></div>
+    <button class="btn btn-danger btn-sm" style="align-self:end;padding:5px 8px;" onclick="remCost('${s}',${c.id})">✕</button>
+  </div>`).join('');
+}
+function updCost(s,id,f,val){const c=costs[s].find(x=>x.id===id);if(c)c[f]=val;}
+function remCost(s,id){costs[s]=costs[s].filter(x=>x.id!==id);renderCosts(s);}
+
+// CALC
+function calcScenario(cpu,shipCPU,pp,sc,plat,vat){
+  const pf=pfRate(plat),v=vat/100,tr=pp+sc,pfa=tr*pf,va=pp*v,tc=cpu+shipCPU,nr=tr-pfa-va,pr=nr-tc,mg=tr>0?(pr/tr)*100:0;
+  function sug(tgt,inclSC){const s=inclSC?sc:0,d=1-pf-tgt/100-v;if(d<=0)return null;const p=(tc-s*(1-pf-tgt/100))/d;return p>0?p:null;}
+  return{totalRev:tr,pfAmt:pfa,vatAmt:va,netRev:nr,profit:pr,margin:mg,totalCost:tc,cpu,shipCPU,suggestPrice:sug};
+}
+function getFormulaCpuForFillSize(p, fillSizeId) {
+  // Calculate true cost per unit from formula for a specific fill size
+  const batchSize = parseFloat(p.formulaBatchSize)||0;
+  const batchUnit = p.formulaBatchUnit||'g';
+  const wastePct  = 0; // Waste removed
+  const labour    = parseFloat(p.formulaLabour)||0;
+  if(!batchSize || !p.formula || !p.formula.length) return null;
+
+  const usable = batchSize * (1 - wastePct/100);
+  const toG    = batchUnit==='kg' ? usable*1000 : usable;
+
+  // Total ingredient cost for batch
+  let totalIngCost = 0;
+  for(const r of p.formula) {
+    const ing = ingredients.find(x=>x.id===r.ingId);
+    const pct = parseFloat(r.pct)||0;
+    const ingQty = toG * pct/100;
+    if(ing && ingQty>0) totalIngCost += getIngCostPerItem(ing, r.supplierId||'', r.tierId||'') * ingQty;
+  }
+
+  // Find fill size
+  // Use selected fill size: __new__ = formulaFillSize, else legacy fillSizes
+  let fillQty = 0;
+  if(fillSizeId==='__new__'||!fillSizeId){
+    fillQty = parseFloat(p.formulaFillSize)||parseFloat((p.fillSizes||[])[0]?.size)||0;
+  } else {
+    fillQty = parseFloat((p.fillSizes||[]).find(f=>(f.id||'')===fillSizeId)?.size)||
+              parseFloat(p.formulaFillSize)||0;
+  }
+  if(!fillQty) return null;
+
+  const usableInBase = batchUnit==='kg' ? usable*1000 : usable;
+  const rawUnits2 = usableInBase / fillQty;
+  const unitsWhole = Math.round(rawUnits2);
+  if(!unitsWhole) return null;
+
+  const ingPerUnit    = totalIngCost / unitsWhole;
+  const labourPerUnit = labour / unitsWhole;
+  // Use pkgItems for new style, or legacy fillSize pkgId
+  let pkgPerUnit = 0;
+  if(fillSizeId==='__new__'||!fillSizeId||!(p.fillSizes||[]).length){
+    pkgPerUnit = (p.pkgItems||[]).reduce((sum,pi)=>{
+      const pkg=pi.pkgId?packagingItems.find(x=>x.id===pi.pkgId):null;
+      return sum+(pkg?bestPkgPrice(pkg)*(parseFloat(pi.qty)||0):0);
+    },0);
+  } else {
+    const fs=(p.fillSizes||[]).find(f=>(f.id||'')===fillSizeId)||(p.fillSizes||[])[0];
+    const pkg=fs?.pkgId?packagingItems.find(x=>x.id===fs.pkgId):null;
+    pkgPerUnit=pkg?bestPkgPrice(pkg):0;
+  }
+  return { cpu: ingPerUnit+labourPerUnit+pkgPerUnit, ingPerUnit, labourPerUnit, pkgPerUnit, unitsPerBatch:unitsWhole, fillQty, totalIngCost, labour };
+}
+
+function getProductCalcs(p, fillSizeId){
+  // Try formula first
+  if(p.formula && p.formula.length && p.formulaBatchSize) {
+    const fc = getFormulaCpuForFillSize(p, fillSizeId);
+    if(fc) {
+      const cpu = fc.cpu;
+      const A=calcScenario(cpu,p.shipCPU||0,p.price||0,0,p.platform||'own',p.vatRate||0);
+      const B=calcScenario(cpu,p.shipCPU||0,p.price||0,p.shipCharge||0,p.platform||'own',p.vatRate||0);
+      return{cpu,batchCost:fc.totalIngCost+fc.labour,A,B,fromFormula:true,formulaDetail:fc};
+    }
+  }
+  // Fallback to old recipe method
+  let bc=recipeBatchCostFromSaved(p);
+  bc+=pkgBatchCostFromSaved(p);
+  for(const sec of Object.values(p.costs||{}))for(const c of sec)bc+=parseFloat(c.amount)||0;
+  const cpu=bc/Math.max(1,p.batchSize||1);
+  const A=calcScenario(cpu,p.shipCPU||0,p.price||0,0,p.platform||'own',p.vatRate||0);
+  const B=calcScenario(cpu,p.shipCPU||0,p.price||0,p.shipCharge||0,p.platform||'own',p.vatRate||0);
+  return{cpu,batchCost:bc,A,B,fromFormula:false};
+}
+
+// PRODUCTS
+function goNewProduct(){
+  currentProdId=null;recipeRows=[];pkgRecipeRows=[];formulaRows=[];fillSizes=[];pkgItems=[];costs={packaging:[],labour:[],other:[]};
+  ['fBatchSize','fLabour'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const fw=document.getElementById('fWaste');if(fw)fw.value='3';
+  const fu=document.getElementById('fBatchUnit');if(fu)fu.value='g';
+  renderFormula();
+  ['pName','pSku','pPrice','pShipCost','pShipCharge'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('pBatch').value=1;document.getElementById('pPlatform').value='own';document.getElementById('pVat').value=0;
+  ['packaging','labour','other'].forEach(s=>renderCosts(s));renderRecipeRows();renderPkgRecipeRows();updateProdSelector();
+}
+function loadProduct(id){
+  if(!id){goNewProduct();return;}
+  const p=products.find(x=>x.id===id);if(!p)return;
+  currentProdId=id;
+  document.getElementById('pName').value=p.name||'';document.getElementById('pSku').value=p.sku||'';
+  document.getElementById('pBatch').value=p.batchSize||1;document.getElementById('pPrice').value=p.price||'';
+  document.getElementById('pPlatform').value=p.platform||'own';document.getElementById('pVat').value=p.vatRate||0;
+  document.getElementById('pShipCost').value=p.shipCPU||'';document.getElementById('pShipCharge').value=p.shipCharge||'';
+  recipeRows=[];for(const r of (p.recipe||[]))recipeRows.push({id:cid(),ingId:r.ingId,qty:r.qty,supplierId:r.supplierId||'',tierId:r.tierId||''});
+  pkgRecipeRows=[];for(const r of (p.pkgRecipe||[]))pkgRecipeRows.push({id:cid(),pkgId:r.pkgId,qty:r.qty||1});
+  // Load formula
+  formulaRows=[];for(const r of (p.formula||[]))formulaRows.push({id:cid(),ingId:r.ingId,pct:r.pct,supplierId:r.supplierId||'',tierId:r.tierId||''});
+  fillSizes=[];for(const f of (p.fillSizes||[]))fillSizes.push({id:cid(),size:f.size,unit:f.unit||'ml',pkgId:f.pkgId||''});
+  pkgItems=[];for(const pi of (p.pkgItems||[]))pkgItems.push({id:cid(),pkgId:pi.pkgId||'',qty:pi.qty||1});
+  const ffs=document.getElementById('fFillSize');if(ffs)ffs.value=p.formulaFillSize||'';
+  const fbs=document.getElementById('fBatchSize');if(fbs)fbs.value=p.formulaBatchSize||'';
+  const fbu=document.getElementById('fBatchUnit');if(fbu)fbu.value=p.formulaBatchUnit||'g';
+  const fw=document.getElementById('fWaste');if(fw)fw.value=p.formulaWaste||3;
+  const fl=document.getElementById('fLabour');if(fl)fl.value=p.formulaLabour!==undefined?p.formulaLabour:'';
+  costs={packaging:[],labour:[],other:[]};
+  for(const[sec,items]of Object.entries(p.costs||{}))for(const item of items)costs[sec].push({id:cid(),name:item.name,amount:item.amount});
+  ['packaging','labour','other'].forEach(s=>renderCosts(s));renderRecipeRows();renderPkgRecipeRows();renderFormula();renderPkgItems();updateProdSelector();
+  document.getElementById('prodSelector').value=id;showPane('products');
+}
+async function saveProduct(){
+  const name=vv('pName').trim()||'Unnamed';
+  // Warn if formula set but no fill size
+  const hasFml = formulaRows.length>0 && parseFloat(document.getElementById('fBatchSize')?.value)>0;
+  const hasFill = parseFloat(document.getElementById('fFillSize')?.value)>0;
+  if(hasFml && !hasFill){
+    if(!confirm('You have formula ingredients but no fill size set.\n\nWithout a fill size the pricing calculator cannot calculate cost per unit.\n\nSave anyway?')) return;
+  }
+  const sc={};for(const[s,items]of Object.entries(costs))sc[s]=items.map(c=>({name:c.name,amount:c.amount}));
+  const recipe=recipeRows.map(r=>({ingId:r.ingId,qty:r.qty,supplierId:r.supplierId||'',tierId:r.tierId||''}));
+  const pkgRecipe=pkgRecipeRows.map(r=>({pkgId:r.pkgId,qty:r.qty}));
+  // Read formula DOM values fresh before save
+  const formula=formulaRows.map(r=>({ingId:r.ingId,pct:r.pct,supplierId:r.supplierId||'',tierId:r.tierId||''}));
+  const fillSizesSaved=fillSizes.map(f=>({size:f.size,unit:f.unit||'ml',pkgId:f.pkgId||''}));
+  const pkgItemsSaved=pkgItems.map(pi=>({pkgId:pi.pkgId,qty:pi.qty}));
+  const formulaFillSize=parseFloat(document.getElementById('fFillSize')?.value)||0;
+  const formulaBatchSize=parseFloat(document.getElementById('fBatchSize').value)||0;
+  const formulaBatchUnit=document.getElementById('fBatchUnit').value||'g';
+  const formulaWaste=parseFloat(document.getElementById('fWaste').value)||3;
+  const formulaLabour=parseFloat(document.getElementById('fLabour').value)||0;
+  const data={id:currentProdId||uid(),name,sku:vv('pSku').trim(),batchSize:nv('pBatch')||1,price:nv('pPrice'),platform:vv('pPlatform'),vatRate:nv('pVat'),shipCPU:nv('pShipCost'),shipCharge:nv('pShipCharge'),costs:sc,recipe,pkgRecipe,formula,fillSizes:fillSizesSaved,pkgItems:pkgItemsSaved,formulaBatchSize,formulaBatchUnit,formulaWaste,formulaLabour,formulaFillSize};
+  if(currentProdId){const idx=products.findIndex(p=>p.id===currentProdId);if(idx>-1)products[idx]=data;}
+  else{currentProdId=data.id;products.push(data);}
+  await saveProdDB(data);updateProdSelector();document.getElementById('prodSelector').value=currentProdId;toast('Product saved ✓');
+}
+
+
+// ── CSV IMPORT / EXPORT ────────────────────────────────────────────────
+
+function downloadFormulaTemplate() {
+  const headers = [
+    'product_name',
+    'product_sku',
+    'platform',
+    'selling_price',
+    'ship_cost',
+    'ship_charge',
+    'batch_size',
+    'batch_unit',
+    'fill_size',
+    'labour_cost',
+    'ingredient_name',
+    'ingredient_pct',
+    'pkg_item_name',
+    'pkg_qty'
+  ];
+
+  const example = [
+    // Row 1: product + first ingredient + first packaging
+    ['Dream & Prosper Spray','DPS001','own','12.99','2.96','3.00','300','ml','30','10','Batana Oil','20','30ml Glass Dropper Bottle','1'],
+    // Row 2: same product, second ingredient (leave product fields blank or repeat)
+    ['','','','','','','','','','','Fractionated Coconut Oil','55','Kraft Label 30ml','1'],
+    ['','','','','','','','','','','Jojoba Oil (Golden)','15','',''],
+    ['','','','','','','','','','','Castor Oil','8','',''],
+    ['','','','','','','','','','','Rosemary Essential Oil 100ml','1','',''],
+    ['','','','','','','','','','','Peppermint Oil 100ml','1','',''],
+  ];
+
+  const rows = [headers, ...example];
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('
+');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kn_formula_template.csv';
+  a.click();
+  setSS('ok','✓ Template downloaded');
+}
+
+async function importFormulaCSV(input) {
+  const file = input.files[0];
+  if(!file) return;
+  setSS('ing','⟳ Importing...');
+
+  const text = await file.text();
+  const lines = text.split('
+').map(l=>l.trim()).filter(Boolean);
+  if(lines.length < 2) { setSS('err','⚠ CSV appears empty'); return; }
+
+  // Parse CSV headers
+  const headers = parseCSVRow(lines[0]);
+  const col = (name) => headers.findIndex(h=>h.toLowerCase().trim()===name.toLowerCase());
+
+  const iProductName = col('product_name');
+  const iSku         = col('product_sku');
+  const iPlatform    = col('platform');
+  const iPrice       = col('selling_price');
+  const iShipCost    = col('ship_cost');
+  const iShipCharge  = col('ship_charge');
+  const iBatchSize   = col('batch_size');
+  const iBatchUnit   = col('batch_unit');
+  const iFillSize    = col('fill_size');
+  const iLabour      = col('labour_cost');
+  const iIngName     = col('ingredient_name');
+  const iIngPct      = col('ingredient_pct');
+  const iPkgName     = col('pkg_item_name');
+  const iPkgQty      = col('pkg_qty');
+
+  // Group rows by product name
+  const productMap = {};
+  let currentProduct = null;
+
+  for(let i=1; i<lines.length; i++){
+    const row = parseCSVRow(lines[i]);
+    if(!row.length) continue;
+
+    const productName = row[iProductName]?.trim();
+    if(productName) currentProduct = productName;
+    if(!currentProduct) continue;
+
+    if(!productMap[currentProduct]) {
+      productMap[currentProduct] = {
+        name: currentProduct,
+        sku: row[iSku]?.trim()||'',
+        platform: row[iPlatform]?.trim()||'own',
+        price: parseFloat(row[iPrice])||0,
+        shipCPU: parseFloat(row[iShipCost])||0,
+        shipCharge: parseFloat(row[iShipCharge])||0,
+        formulaBatchSize: parseFloat(row[iBatchSize])||0,
+        formulaBatchUnit: row[iBatchUnit]?.trim()||'ml',
+        formulaFillSize: parseFloat(row[iFillSize])||0,
+        formulaLabour: parseFloat(row[iLabour])||0,
+        formulaWaste: 0,
+        formula: [],
+        pkgItems: [],
+        costs: {packaging:[],labour:[],other:[]},
+        recipe: [],
+        pkgRecipe: []
+      };
+    }
+
+    // Add ingredient
+    const ingName = row[iIngName]?.trim();
+    const ingPct  = parseFloat(row[iIngPct])||0;
+    if(ingName && ingPct>0) {
+      // Find ingredient by name
+      const ing = ingredients.find(x=>x.name.toLowerCase().includes(ingName.toLowerCase()));
+      if(ing) {
+        productMap[currentProduct].formula.push({
+          ingId: ing.id,
+          pct: ingPct,
+          supplierId: '',
+          tierId: ''
+        });
+      } else {
+        console.warn('Ingredient not found:', ingName);
+      }
+    }
+
+    // Add packaging
+    const pkgName = row[iPkgName]?.trim();
+    const pkgQty  = parseFloat(row[iPkgQty])||1;
+    if(pkgName) {
+      const pkg = packagingItems.find(x=>x.name.toLowerCase().includes(pkgName.toLowerCase()));
+      if(pkg) {
+        // Only add if not already added for this product
+        const already = productMap[currentProduct].pkgItems.find(x=>x.pkgId===pkg.id);
+        if(!already) {
+          productMap[currentProduct].pkgItems.push({pkgId: pkg.id, qty: pkgQty});
+        }
+      } else {
+        console.warn('Packaging not found:', pkgName);
+      }
+    }
+  }
+
+  // Save each product
+  let saved = 0, errors = [];
+  for(const [name, prod] of Object.entries(productMap)) {
+    // Check if product already exists
+    const existing = products.find(p=>p.name.toLowerCase()===name.toLowerCase());
+    if(existing) {
+      // Update existing product formula data
+      Object.assign(existing, {
+        formula: prod.formula,
+        pkgItems: prod.pkgItems,
+        formulaBatchSize: prod.formulaBatchSize,
+        formulaBatchUnit: prod.formulaBatchUnit,
+        formulaFillSize: prod.formulaFillSize,
+        formulaLabour: prod.formulaLabour,
+        formulaWaste: 0
+      });
+      try {
+        const{id,...rest}=existing;
+        await sbUp('nns_products',{id,data:rest});
+        saved++;
+      } catch(e) { errors.push(name); }
+    } else {
+      // Create new product
+      prod.id = uid();
+      products.push(prod);
+      try {
+        const{id,...rest}=prod;
+        await sbUp('nns_products',{id,data:rest});
+        saved++;
+      } catch(e) { errors.push(name); }
+    }
+  }
+
+  // Reset input
+  input.value = '';
+  renderProdList();
+  updateProdSelector();
+
+  if(errors.length) {
+    setSS('err',`⚠ ${saved} imported, ${errors.length} failed: ${errors.join(', ')}`);
+  } else {
+    setSS('ok',`✓ ${saved} product${saved>1?'s':''} imported successfully`);
+  }
+}
+
+function parseCSVRow(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for(let i=0; i<line.length; i++){
+    const c = line[i];
+    if(c==='"') { inQuotes=!inQuotes; continue; }
+    if(c===',' && !inQuotes) { result.push(current); current=''; continue; }
+    current += c;
+  }
+  result.push(current);
+  return result;
+}
+
+// ── DUPLICATE PRODUCT ──────────────────────────────────────────────────
+async function duplicateProduct(id){
+  const p = products.find(x=>x.id===id);
+  if(!p) return;
+  // Deep copy the product with a new ID and name
+  const newProd = JSON.parse(JSON.stringify(p));
+  newProd.id = uid();
+  newProd.name = p.name + ' (Copy)';
+  newProd.sku = '';
+  products.push(newProd);
+  // Save to DB
+  try{
+    const{id:pid,...rest}=newProd;
+    await sbUp('nns_products',{id:pid,data:rest});
+    setSS('ok','✓ Copied — now editing');
+  }catch(e){
+    setSS('err','⚠ Copy saved locally only');
+  }
+  // Load the copy for editing
+  loadProduct(newProd.id);
+  showPane('products');
+}
+async function deleteProduct(){
+  if(!currentProdId){alert('No product selected.');return;}
+  const p=products.find(x=>x.id===currentProdId);if(!p||!confirm(`Delete "${p.name}"?`))return;
+  products=products.filter(x=>x.id!==currentProdId);await delProdDB(currentProdId);currentProdId=null;goNewProduct();renderDashboard();
+}
+function updateProdSelector(){
+  ['prodSelector','pricingProdSel'].forEach(sid=>{
+    const sel=document.getElementById(sid);if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select product —</option>'+products.map(p=>`<option value="${p.id}">${esc(p.name||'Unnamed')}</option>`).join('');
+    if(currentProdId&&sid==='prodSelector')sel.value=currentProdId;else if(cur)sel.value=cur;
+  });
+}
+
+// PRICING
+function updatePricingSelectors(){updateProdSelector();}
+function setShipMode(m){shipMode=m;['both','free','charged'].forEach(x=>document.getElementById('sopt-'+x).classList.toggle('active',x===m));renderPricing();}
+function onPricingProdChange(){
+  const id=vv('pricingProdSel');
+  const p=id?products.find(x=>x.id===id):null;
+  const wrap=document.getElementById('fillSizeSelWrap');
+  const sel=document.getElementById('pricingFillSel');
+
+  if(p){
+    // Build options from new formulaFillSize + pkgItems AND legacy fillSizes
+    const opts=[];
+
+    // New style: single fill size with pkgItems
+    if(p.formulaFillSize){
+      const pkgNames=(p.pkgItems||[]).map(pi=>{
+        const pkg=packagingItems.find(x=>x.id===pi.pkgId);
+        return pkg?pkg.name:'';
+      }).filter(Boolean).join(', ');
+      opts.push(`<option value="__new__">${p.formulaFillSize}${p.formulaBatchUnit||'ml'} fill${pkgNames?' — '+pkgNames:''}</option>`);
+    }
+
+    // Legacy: fillSizes array
+    (p.fillSizes||[]).forEach((f,i)=>{
+      const pkgItem=f.pkgId?packagingItems.find(x=>x.id===f.pkgId):null;
+      opts.push(`<option value="${f.id||i}">${f.size}${p.formulaBatchUnit||'ml'} fill${pkgItem?' — '+pkgItem.name:''}</option>`);
+    });
+
+    if(opts.length){
+      sel.innerHTML=opts.join('');
+      if(wrap)wrap.style.display='block';
+    } else {
+      sel.innerHTML='<option value="">No fill size set — edit product</option>';
+      if(wrap)wrap.style.display='block';
+    }
+  } else {
+    if(wrap)wrap.style.display='none';
+  }
+  renderPricing();
+}
+
+function renderPricing(){
+  const id=vv('pricingProdSel'),out=document.getElementById('pricingOutput');
+  if(!id){out.innerHTML='<div class="empty-state">Select a product above.</div>';return;}
+  const p=products.find(x=>x.id===id);if(!p){out.innerHTML='';return;}
+  const fillSizeId=vv('pricingFillSel')||'__new__';
+  const{A,B,cpu,batchCost,fromFormula,formulaDetail}=getProductCalcs(p,fillSizeId);
+  const recCost = fromFormula ? (formulaDetail?formulaDetail.totalIngCost:0) : recipeBatchCostFromSaved(p);
+  const manCost = fromFormula ? (formulaDetail?formulaDetail.labour:0) : (batchCost-recCost);
+  const pfLabel={own:'Own site',etsy:'Etsy',ebay:'eBay'}[p.platform]||p.platform;
+
+  // Show cost source info
+  const srcEl=document.getElementById('pricingCostSource');
+  if(srcEl){
+    if(fromFormula && formulaDetail){
+      srcEl.innerHTML=`<span style="color:var(--success);font-weight:500;">⚗️ Using formula calculator</span> — ${formulaDetail.unitsPerBatch} units from batch · Ingredients: £${formulaDetail.ingPerUnit.toFixed(4)}/unit · Labour: £${formulaDetail.labourPerUnit.toFixed(4)}/unit · Packaging: £${formulaDetail.pkgPerUnit.toFixed(4)}/unit`;
+    } else {
+      srcEl.innerHTML='<span style="color:var(--warn);">Using legacy recipe method — add formula data for accurate costing</span>';
+    }
+  }
+  function panel(type,s){
+    const isC=type==='charged',lbl=isC?'📬 Charged shipping':'🎁 Free shipping';
+    const bc=s.margin>=goodT()?'#2E6E3E':s.margin>=minT()?'#A07020':'#B84444';
+    const bw=Math.min(Math.max(s.margin,0),100),pc=s.profit>=0?'var(--success)':'var(--danger)';
+    const sc=isC?(p.shipCharge||0):0;
+    const sugMin=s.suggestPrice(minT(),isC),sugGood=s.suggestPrice(goodT(),isC);
+    return `<div class="cp ${type}"><div class="cp-lbl">${lbl}</div>
+      <div class="p-row"><span class="lbl">Product cost/unit</span><span class="val">£${cpu.toFixed(2)}</span></div>
+      <div class="p-row"><span class="lbl">Shipping cost/unit</span><span class="val">£${(p.shipCPU||0).toFixed(2)}</span></div>
+      <div class="p-row"><span class="lbl">Your selling price</span><span class="val">£${(p.price||0).toFixed(2)}</span></div>
+      ${isC?`<div class="p-row"><span class="lbl">+ Ship charge</span><span class="val">£${sc.toFixed(2)}</span></div><div class="p-row"><span class="lbl">= Customer pays</span><span class="val" style="font-weight:600;">£${s.totalRev.toFixed(2)}</span></div>`:''}
+      <div class="p-row"><span class="lbl">${pfLabel} fee (${(pfRate(p.platform)*100).toFixed(1)}%)</span><span class="val" style="color:var(--danger);">−£${s.pfAmt.toFixed(2)}</span></div>
+      <div class="p-row"><span class="lbl">VAT (${p.vatRate||0}%)</span><span class="val" style="color:var(--danger);">−£${s.vatAmt.toFixed(2)}</span></div>
+      <div class="p-row p-total"><span class="lbl">Profit/unit</span><span class="val" style="color:${pc};">£${s.profit.toFixed(2)}</span></div>
+      <div class="p-row" style="border:none;padding-top:3px;"><span class="lbl">Margin</span><span class="val" style="color:${bc};font-weight:700;">${s.margin.toFixed(1)}%</span></div>
+      <div class="mbar"><div class="mbar-fill" style="width:${bw}%;background:${bc};"></div></div>
+      <div class="sug-grid">
+        <div class="sug-card"><div class="sug-lbl">Min price for ${minT()}% margin</div><div class="sug-val">${sugMin?'£'+sugMin.toFixed(2):'—'}</div></div>
+        <div class="sug-card"><div class="sug-lbl">Target for ${goodT()}% margin</div><div class="sug-val">${sugGood?'£'+sugGood.toFixed(2):'—'}</div></div>
+      </div></div>`;
+  }
+  let html=`<div class="card" style="border-left:4px solid var(--purple);">
+    <div style="text-align:center;padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#9A80B0;margin-bottom:6px;">True Cost Per Unit</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:42px;color:var(--purple);line-height:1;">£${cpu.toFixed(4)}</div>
+      ${fromFormula&&formulaDetail?`<div style="font-size:12px;color:#9A80B0;margin-top:4px;">${formulaDetail.unitsPerBatch} units · ${formulaDetail.fillQty}${p.formulaBatchUnit||'ml'} per unit</div>`:''}
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#9A80B0;margin-bottom:8px;">Breakdown per unit</div>
+    ${fromFormula&&formulaDetail?`
+    <div class="p-row"><span class="lbl">Ingredients</span><span class="val">£${formulaDetail.ingPerUnit.toFixed(4)}</span></div>
+    <div class="p-row"><span class="lbl">Labour</span><span class="val">£${formulaDetail.labourPerUnit.toFixed(4)}</span></div>
+    <div class="p-row"><span class="lbl">Packaging</span><span class="val">£${formulaDetail.pkgPerUnit.toFixed(4)}</span></div>
+    <div class="p-row" style="font-size:11px;color:#9A80B0;"><span class="lbl">Units from batch</span><span class="val">${formulaDetail.unitsPerBatch}</span></div>
+    `:`
+    <div class="p-row"><span class="lbl">Recipe ingredients</span><span class="val">£${recCost.toFixed(4)}</span></div>
+    <div class="p-row"><span class="lbl">Packaging &amp; other</span><span class="val">£${manCost.toFixed(4)}</span></div>
+    `}
+    <div class="p-row p-total"><span class="lbl">Total cost per unit</span><span class="val" style="color:var(--purple);font-weight:700;">£${cpu.toFixed(4)}</span></div>
+  </div>`;
+  if(shipMode==='both')html+=`<div class="compare-grid" style="margin-bottom:0.9rem;">${panel('free',A)}${panel('charged',B)}</div>`;
+  else if(shipMode==='free')html+=`<div style="max-width:440px;margin-bottom:0.9rem;">${panel('free',A)}</div>`;
+  else html+=`<div style="max-width:440px;margin-bottom:0.9rem;">${panel('charged',B)}</div>`;
+  out.innerHTML=html;
+}
+
+// BUNDLES
+function addBundleRow(q='',p=''){bundleRows.push({id:cid(),qty:q,price:p});renderBundles();}
+function renderBundles(){
+  const pid=vv('pricingProdSel'),prod=pid?products.find(x=>x.id===pid):null;
+  const wrap=document.getElementById('bundleRows');
+  if(!bundleRows.length){wrap.innerHTML='<p class="cost-empty">No bundles yet.</p>';return;}
+  wrap.innerHTML=bundleRows.map((b,i)=>{
+    const qty=parseFloat(b.qty)||0,price=parseFloat(b.price)||0;let info='';
+    if(prod&&qty&&price){
+      const{A}=getProductCalcs(prod);const tc=A.cpu*qty;
+      const pf=pfRate(prod.platform||'own'),vat=(prod.vatRate||0)/100;
+      const profit=price-price*pf-price*vat-tc,margin=price>0?(profit/price)*100:0,perBar=price/qty;
+      const bc=margin>=goodT()?'var(--success)':margin>=minT()?'var(--warn)':'var(--danger)';
+      info=`<span style="font-size:12px;color:#7A60A0;">£${perBar.toFixed(2)}/unit</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:${profit>=0?'var(--success)':'var(--danger)'};">£${profit.toFixed(2)} profit</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:${bc};">${margin.toFixed(1)}%</span>`;
+    }
+    return `<div style="display:grid;grid-template-columns:80px 120px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
+      <div class="field"><label>${i===0?'Units':''}</label><input type="number" min="1" value="${b.qty}" placeholder="2" oninput="updBundle(${b.id},'qty',this.value)"></div>
+      <div class="field"><label>${i===0?'Price (£)':''}</label><input type="number" step="0.01" value="${b.price}" placeholder="9.99" oninput="updBundle(${b.id},'price',this.value)"></div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">${info}</div>
+      <button class="btn btn-danger btn-sm" onclick="remBundle(${b.id})">✕</button>
+    </div>`;
+  }).join('');
+}
+function updBundle(id,f,val){const b=bundleRows.find(x=>x.id===id);if(b){b[f]=val;renderBundles();}}
+function remBundle(id){bundleRows=bundleRows.filter(x=>x.id!==id);renderBundles();}
+
+// DASHBOARD
+function renderDashboard(){
+  const m=document.getElementById('dashMetrics');
+  if(products.length){
+    const calcs=products.map(p=>getProductCalcs(p)),n=products.length;
+    const avgF=calcs.reduce((a,b)=>a+b.A.margin,0)/n,avgC=calcs.reduce((a,b)=>a+b.B.margin,0)/n;
+    const mc1=avgF>=goodT()?'green':avgF>=minT()?'amber-c':'red',mc2=avgC>=goodT()?'green':avgC>=minT()?'amber-c':'red';
+    m.innerHTML=`<div class="metric"><div class="metric-lbl">Products</div><div class="metric-val purple-c">${n}</div></div>
+      <div class="metric"><div class="metric-lbl">Ingredients</div><div class="metric-val purple-c">${ingredients.length}</div></div>
+      <div class="metric"><div class="metric-lbl">Avg margin (free ship)</div><div class="metric-val ${mc1}">${avgF.toFixed(1)}%</div></div>
+      <div class="metric"><div class="metric-lbl">Avg margin (+ship charge)</div><div class="metric-val ${mc2}">${avgC.toFixed(1)}%</div></div>`;
+  }else{m.innerHTML=`<div class="metric"><div class="metric-lbl">Products</div><div class="metric-val">0</div></div><div class="metric"><div class="metric-lbl">Ingredients</div><div class="metric-val purple-c">${ingredients.length}</div></div>`;}
+  const pt=document.getElementById('dashProductTable');
+  if(!products.length){pt.innerHTML='<div class="empty-state">No products yet.</div>';}
+  else{const rows=products.map(p=>{const{A,B}=getProductCalcs(p);return`<tr><td><strong>${esc(p.name)}</strong>${p.sku?`<br><span style="font-size:11px;color:#9A80B0;">${esc(p.sku)}</span>`:''}</td><td class="mono">£${(p.price||0).toFixed(2)}</td><td><span class="badge ${A.margin>=goodT()?'badge-green':A.margin>=minT()?'badge-amber':'badge-red'}">${A.margin.toFixed(1)}% free</span> <span class="badge ${B.margin>=goodT()?'badge-green':B.margin>=minT()?'badge-amber':'badge-red'}">${B.margin.toFixed(1)}% +ship</span></td><td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="loadProduct('${p.id}')">Edit</button> <button class="btn btn-outline btn-xs" onclick="duplicateProduct('${p.id}')" title="Copy product">⧉ Copy</button></td></tr>`;}).join('');
+  pt.innerHTML=`<table class="tbl"><thead><tr><th>Product</th><th>Price</th><th>Margin</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;}
+  const it=document.getElementById('dashIngTop');
+  const savings=ingredients.filter(i=>cheapestGBPPrice(i,'uk')&&cheapestGBPPrice(i,'fac')).map(i=>({name:i.name,pct:savingPct(i),uk:cheapestGBPPrice(i,'uk'),fac:cheapestGBPPrice(i,'fac'),unit:i.unit})).sort((a,b)=>b.pct-a.pct).slice(0,5);
+  if(!savings.length){it.innerHTML='<div class="empty-state">Add ingredients with both UK and factory prices to see savings here.</div>';}
+  else{it.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>Best UK £/unit</th><th>Best factory £/unit</th><th>Saving</th></tr></thead><tbody>`+savings.map(s=>`<tr><td>${esc(s.name)}</td><td class="mono">£${s.uk.toFixed(3)}/${s.unit}</td><td class="mono">£${s.fac.toFixed(3)}/${s.unit}</td><td>${s.pct>0?`<span class="saving-pill">Save ${s.pct.toFixed(0)}%</span>`:`<span class="worse-pill">Factory costs more</span>`}</td></tr>`).join('')+'</tbody></table>';}
+}
+
+// EXPORT
+function exportCSV(){
+  if(!products.length){alert('No products.');return;}
+  const heads=['Name','SKU','Price','Ship cost/unit','Ship charge','Platform','Profit (free)','Margin (free)%','Profit (+ship)','Margin (+ship)%'];
+  const rows=products.map(p=>{const{A,B}=getProductCalcs(p);return[p.name,p.sku,p.price,p.shipCPU,p.shipCharge,p.platform,A.profit.toFixed(2),A.margin.toFixed(1),B.profit.toFixed(2),B.margin.toFixed(1)];});
+  dlCSV([heads,...rows],'kn_pricing');
+}
+function dlCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=name+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+function toast(msg){
+  const t=document.createElement('div');t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;right:16px;background:var(--purple);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(107,53,168,0.3);';
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
+}
+
+function updateFormulaSummaryFull(batchSize,batchUnit,wastePct,usable,totalIngCost,labour){
+  const summaryEl=document.getElementById('formulaBatchSummary');
+  if(!summaryEl)return;
+  if(batchSize>0&&formulaRows.length){
+    summaryEl.style.display='block';
+    summaryEl.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">
+        <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#7A60A0;margin-bottom:3px;">Batch size</div><strong>${batchSize}${batchUnit}</strong></div>
+        <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#7A60A0;margin-bottom:3px;">Usable batch</div><strong>${usable.toFixed(1)}${batchUnit}</strong></div>
+        <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#7A60A0;margin-bottom:3px;">Ingredient cost</div><strong style="color:var(--purple);">£${totalIngCost.toFixed(4)}</strong><div style="font-size:11px;color:#9A80B0;margin-top:1px;">for ${batchSize}${batchUnit}</div></div>
+        <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#7A60A0;margin-bottom:3px;">Labour</div><strong>£${labour.toFixed(2)}</strong></div>
+      </div>
+      <div style="padding:10px;background:white;border-radius:8px;font-size:13px;">
+        <strong>Total batch cost (ingredients + labour): £${(totalIngCost+labour).toFixed(2)}</strong>
+      </div>`;
+  } else { summaryEl.style.display='none'; }
+}
+
+function updateFormulaSummary(){
+  const batchSize=parseFloat(document.getElementById('fBatchSize').value)||0;
+  const batchUnit=document.getElementById('fBatchUnit').value||'g';
+  const wastePct=0; // Waste removed
+  const labourEl=document.getElementById('fLabour');
+  const labour=labourEl&&labourEl.value!==''?parseFloat(labourEl.value)||0:0;
+  const usable=batchSize*(1-wastePct/100);
+  const toG=batchUnit==='kg'?usable*1000:usable;
+  let totalIngCost=0;
+  formulaRows.forEach(r=>{
+    const ing=ingredients.find(x=>x.id===r.ingId);
+    const pct=parseFloat(r.pct)||0;
+    const ingQty=toG*pct/100;
+    if(ing&&ingQty>0)totalIngCost+=getIngCostPerItem(ing,r.supplierId,r.tierId)*ingQty;
+  });
+  updateFormulaSummaryFull(batchSize,batchUnit,wastePct,usable,totalIngCost,labour);
+  // Also update fill sizes
+  const fillWrap=document.getElementById('fillSizesWrap');
+  const fillRowsEl=document.getElementById('fillSizeRows');
+  if(fillWrap&&fillRowsEl&&fillSizes.length){renderFillSizes(batchUnit,usable,totalIngCost,labour);}
+}
+
+function renderFillSizes(batchUnit,usable,totalIngCost,labour){
+  const fillRowsEl=document.getElementById('fillSizeRows');
+  const noMsg=document.getElementById('noFillSizes');
+  if(!fillSizes.length){
+    if(fillRowsEl)fillRowsEl.innerHTML='';
+    if(noMsg)noMsg.style.display='block';
+    return;
+  }
+  if(noMsg)noMsg.style.display='none';
+  if(!fillRowsEl)return;
+  const pkgOpts='<option value="">— no packaging —</option>'+packagingItems.map(p=>`<option value="${p.id}">${esc(p.name)} (£${bestPkgPrice(p).toFixed(2)}/unit)</option>`).join('');
+  fillRowsEl.innerHTML=fillSizes.map((fs,i)=>{
+    const fillQty=parseFloat(fs.size)||0;
+    let units=0;
+    if(fillQty>0&&usable>0){
+      const usableBase=batchUnit==='kg'?usable*1000:usable;
+      const raw=(usableBase/fillQty);
+      // Round to nearest whole number if within 0.01 of integer (handles floating point)
+      units=Math.round(raw);
+    }
+    const ingCpu=units>0?totalIngCost/units:0;
+    const labCpu=units>0?labour/units:0;
+    const pkgItem=fs.pkgId?packagingItems.find(x=>x.id===fs.pkgId):null;
+    const pkgCpu=pkgItem?bestPkgPrice(pkgItem):0;
+    const total=ingCpu+labCpu+pkgCpu;
+    const selPkgOpts=pkgOpts.replace(`value="${fs.pkgId}"`,`value="${fs.pkgId}" selected`);
+    return `<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:150px 1fr 34px;gap:10px;align-items:end;margin-bottom:12px;">
+        <div class="field">${i===0?'<label>Fill size ('+batchUnit+')</label>':''}
+          <input type="number" step="1" min="1" value="${fs.size}" placeholder="e.g. 30" oninput="updFillSize(${fs.id},'size',this.value);" style="font-weight:600;"></div>
+        <div class="field">${i===0?'<label>Packaging (from library)</label>':''}
+          <select onchange="updFillSize(${fs.id},'pkgId',this.value)">${selPkgOpts}</select></div>
+        <button class="btn btn-danger btn-sm" style="align-self:end;padding:6px 8px;" onclick="remFillSize(${fs.id})">✕</button>
+      </div>
+      ${units>0?`
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;background:var(--cream-dark);border-radius:8px;padding:12px;">
+        <div><div style="font-size:10px;text-transform:uppercase;color:#7A60A0;margin-bottom:3px;">Units/batch</div><strong style="font-size:18px;color:var(--purple);">${units}</strong></div>
+        <div><div style="font-size:10px;text-transform:uppercase;color:#7A60A0;margin-bottom:3px;">Ingredients/unit</div><strong>£${ingCpu.toFixed(4)}</strong></div>
+        <div><div style="font-size:10px;text-transform:uppercase;color:#7A60A0;margin-bottom:3px;">Labour/unit</div><strong>£${labCpu.toFixed(4)}</strong></div>
+        <div><div style="font-size:10px;text-transform:uppercase;color:#7A60A0;margin-bottom:3px;">Packaging/unit</div><strong>£${pkgCpu.toFixed(4)}</strong></div>
+        <div style="background:var(--purple-pale);border-radius:6px;padding:8px;"><div style="font-size:10px;text-transform:uppercase;color:var(--purple);margin-bottom:3px;">True cost/unit</div><strong style="font-size:16px;color:var(--purple);">£${total.toFixed(4)}</strong></div>
+      </div>`:'<div style="font-size:13px;color:#9A80B0;padding:4px;">Enter fill size to calculate</div>'}
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
