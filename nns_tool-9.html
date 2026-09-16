@@ -166,7 +166,14 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
         <button class="btn btn-purple btn-sm" onclick="showPane('products');goNewProduct()">+ New product</button>
       </div>
       <div class="metrics" id="dashMetrics"></div>
-      <div class="card"><div class="card-head"><span class="card-title">Products at a glance</span></div><div id="dashProductTable"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">Products at a glance</span>
+        <div class="field" style="min-width:175px;margin:0;"><label for="dashProductSort">Sort products</label>
+          <select id="dashProductSort" onchange="renderDashboard()">
+            <option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option>
+            <option value="profit-desc">Profit (+delivery): highest</option><option value="profit-asc">Profit (+delivery): lowest</option>
+            <option value="margin-desc">Margin (+delivery): highest</option><option value="margin-asc">Margin (+delivery): lowest</option>
+          </select>
+        </div></div><div id="dashProductTable"></div></div>
       <div class="card"><div class="card-head"><span class="card-title">Top ingredient savings (vs UK price)</span><button class="btn btn-outline btn-sm" onclick="showPane('ingredients')">View all</button></div><div id="dashIngTop"></div></div>
     </div>
 
@@ -188,6 +195,14 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
       <div class="section-head">
         <span class="section-title">Packaging library</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="field" style="min-width:160px;margin:0;"><label for="pkgSort">Sort packaging</label>
+            <select id="pkgSort" onchange="renderPkgTable()">
+              <option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option>
+              <option value="type-asc">Type A–Z</option>
+              <option value="uk-asc">UK price: lowest first</option><option value="uk-desc">UK price: highest first</option>
+              <option value="fac-asc">Factory price: lowest first</option><option value="fac-desc">Factory price: highest first</option>
+            </select>
+          </div>
           <button class="btn btn-outline btn-sm" onclick="exportPackaging()">⬇ CSV</button>
           <button class="btn btn-purple btn-sm" onclick="openPkgModal()">+ Add item</button>
         </div>
@@ -979,11 +994,26 @@ async function deletePkg(id){
 }
 
 const catIcons={jar:'🫙',bottle:'🍶',box:'📦',label:'🏷',pouch:'👜',tube:'🧴',lid:'🔩',bag:'🛍',other:'📋'};
+function compareNames(a,b){return (a||'').localeCompare(b||'','en-GB',{sensitivity:'base',numeric:true});}
+function comparePrices(a,b,descending=false){
+  if(!a&&b)return 1;if(a&&!b)return -1;
+  return descending?b-a:a-b;
+}
 
 function renderPkgTable(){
   const wrap=document.getElementById('pkgTable');
   if(!packagingItems.length){wrap.innerHTML='<div class="empty-state">No packaging items yet — click <strong>Add item</strong> to build your library.</div>';return;}
-  const rows=packagingItems.map(item=>{
+  const sort=vv('pkgSort')||'name-asc';
+  const sorted=[...packagingItems].sort((a,b)=>{
+    let result=0;
+    if(sort==='name-desc')result=compareNames(b.name,a.name);
+    else if(sort==='type-asc')result=compareNames(a.category,b.category);
+    else if(sort.startsWith('uk-'))result=comparePrices(cheapestPkgGBP(a,'uk'),cheapestPkgGBP(b,'uk'),sort.endsWith('desc'));
+    else if(sort.startsWith('fac-'))result=comparePrices(cheapestPkgGBP(a,'fac'),cheapestPkgGBP(b,'fac'),sort.endsWith('desc'));
+    else result=compareNames(a.name,b.name);
+    return result||compareNames(a.name,b.name);
+  });
+  const rows=sorted.map(item=>{
     const ukBest=cheapestPkgGBP(item,'uk'),facBest=cheapestPkgGBP(item,'fac');
     const ukCount=item.ukSuppliers?.length||0,facCount=item.facSuppliers?.length||0;
     const sp=ukBest&&facBest?((ukBest-facBest)/ukBest*100):null;
@@ -2136,8 +2166,28 @@ function renderDashboard(){
   }else{m.innerHTML=`<div class="metric"><div class="metric-lbl">Products</div><div class="metric-val">0</div></div><div class="metric"><div class="metric-lbl">Ingredients</div><div class="metric-val purple-c">${ingredients.length}</div></div>`;}
   const pt=document.getElementById('dashProductTable');
   if(!products.length){pt.innerHTML='<div class="empty-state">No products yet.</div>';}
-  else{const rows=products.map(p=>{const{A,B}=getProductCalcs(p);return`<tr><td><strong>${esc(p.name)}</strong>${p.sku?`<br><span style="font-size:11px;color:#9A80B0;">${esc(p.sku)}</span>`:''}</td><td class="mono">£${(p.price||0).toFixed(2)}</td><td><span class="badge ${A.margin>=goodT()?'badge-green':A.margin>=minT()?'badge-amber':'badge-red'}">${A.margin.toFixed(1)}% free</span> <span class="badge ${B.margin>=goodT()?'badge-green':B.margin>=minT()?'badge-amber':'badge-red'}">${B.margin.toFixed(1)}% +ship</span></td><td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="loadProduct('${p.id}')">Edit</button> <button class="btn btn-outline btn-xs" onclick="duplicateProduct('${p.id}')" title="Copy product">⧉ Copy</button></td></tr>`;}).join('');
-  pt.innerHTML=`<table class="tbl"><thead><tr><th>Product</th><th>Price</th><th>Margin</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;}
+  else{
+    const sort=vv('dashProductSort')||'name-asc';
+    const listed=products.map(p=>({p,calcs:getProductCalcs(p)})).sort((a,b)=>{
+      let result=0;
+      if(sort==='name-desc')result=compareNames(b.p.name,a.p.name);
+      else if(sort==='profit-desc')result=b.calcs.B.profit-a.calcs.B.profit;
+      else if(sort==='profit-asc')result=a.calcs.B.profit-b.calcs.B.profit;
+      else if(sort==='margin-desc')result=b.calcs.B.margin-a.calcs.B.margin;
+      else if(sort==='margin-asc')result=a.calcs.B.margin-b.calcs.B.margin;
+      else result=compareNames(a.p.name,b.p.name);
+      return result||compareNames(a.p.name,b.p.name);
+    });
+    const rows=listed.map(({p,calcs:{A,B}})=>`<tr>
+      <td><strong>${esc(p.name)}</strong>${p.sku?`<br><span style="font-size:11px;color:#9A80B0;">${esc(p.sku)}</span>`:''}</td>
+      <td class="mono">£${(p.price||0).toFixed(2)}</td>
+      <td class="mono"><div>£${A.profit.toFixed(2)} free delivery</div><div>£${B.profit.toFixed(2)} + delivery charge</div></td>
+      <td><div><span class="badge ${A.margin>=goodT()?'badge-green':A.margin>=minT()?'badge-amber':'badge-red'}">${A.margin.toFixed(1)}% free</span></div>
+        <div style="margin-top:4px;"><span class="badge ${B.margin>=goodT()?'badge-green':B.margin>=minT()?'badge-amber':'badge-red'}">${B.margin.toFixed(1)}% + delivery</span></div></td>
+      <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="loadProduct('${p.id}')">Edit</button> <button class="btn btn-outline btn-xs" onclick="duplicateProduct('${p.id}')" title="Copy product">⧉ Copy</button></td>
+    </tr>`).join('');
+    pt.innerHTML=`<table class="tbl"><thead><tr><th>Product</th><th>Price</th><th>Estimated profit / sale</th><th>Margin</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
   const it=document.getElementById('dashIngTop');
   const savings=ingredients.filter(i=>cheapestGBPPrice(i,'uk')&&cheapestGBPPrice(i,'fac')).map(i=>({name:i.name,pct:savingPct(i),uk:cheapestGBPPrice(i,'uk'),fac:cheapestGBPPrice(i,'fac'),unit:i.unit})).sort((a,b)=>b.pct-a.pct).slice(0,5);
   if(!savings.length){it.innerHTML='<div class="empty-state">Add ingredients with both UK and factory prices to see savings here.</div>';}
