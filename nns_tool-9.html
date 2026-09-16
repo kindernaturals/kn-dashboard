@@ -350,6 +350,12 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
         <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addBundleRow()">+ Add bundle tier</button>
         <button class="btn btn-purple btn-sm" style="margin-top:8px;" onclick="saveBundles()">Save bundles</button>
       </div>
+      <div class="card" style="border-left:3px solid var(--purple);">
+        <div class="card-head"><span class="card-title">🧺 Mixed bundles</span><button class="btn btn-outline btn-sm" onclick="newMixedBundle()">+ New mixed bundle</button></div>
+        <div class="hint">Combine different products, set one bundle price, and compare customer savings with your costs and profit.</div>
+        <div id="mixedBundleList"></div>
+        <div id="mixedBundleEditor"></div>
+      </div>
     </div>
 
     <!-- SETTINGS -->
@@ -490,6 +496,7 @@ let auth={owner:'Va2026',va:'Va2026'};
 let fxRates=[{currency:'USD',rate:0.79},{currency:'EUR',rate:0.86},{currency:'CNY',rate:0.11},{currency:'AUD',rate:0.51}];
 let currentUser=null,currentProdId=null,shipMode='both';
 let recipeRows=[],costs={packaging:[],labour:[],other:[]},bundleRows=[];
+let mixedBundles=[],mixedDraft=null,mixedEditingId=null;
 let editIngId=null,ctr=0;
 // modal supplier rows
 let modalUKSuppliers=[],modalFacSuppliers=[];
@@ -563,6 +570,8 @@ async function loadAll(){
     if(aRow)auth={...auth,...aRow.value};
     if(sRow)settings={...settings,...sRow.value};
     if(fRow&&fRow.value)fxRates=fRow.value;
+    const mixedRow=setts.find(s=>s.key==='mixed_bundles');
+    mixedBundles=Array.isArray(mixedRow?.value)?mixedRow.value:[];
     packagingItems=(pkgs||[]).map(i=>({id:i.id,name:i.name,category:i.category||'other',unit:i.unit||'unit',notes:i.notes||'',ukSuppliers:Array.isArray(i.supplier_uk)?i.supplier_uk:[],facSuppliers:Array.isArray(i.supplier_fac)?i.supplier_fac:[]}));
     applySettingsUI();renderFxRows();
     setSS('ok','✓ Live');
@@ -641,7 +650,7 @@ function showPane(name){
   if(name==='dashboard')renderDashboard();
   if(name==='ingredients')renderIngTable();
   if(name==='packaging')renderPkgTable();
-  if(name==='pricing'){updatePricingSelectors();renderPricing();renderBundles();}
+  if(name==='pricing'){updatePricingSelectors();renderPricing();renderBundles();renderMixedBundles();}
 }
 
 // INGREDIENT HELPERS
@@ -1974,6 +1983,127 @@ async function saveBundles(){
     products[products.findIndex(x=>x.id===pid)]=updated;
     setSS('ok','✓ Bundles saved');toast('Bundles saved ✓');
   }catch(e){setSS('err','⚠ Bundle save failed');console.error(e);toast('Bundle save failed');}
+}
+
+// MIXED BUNDLES — saved separately from individual product prices
+function mixedCalc(bundle){
+  const lines=(bundle.items||[]).map(item=>{
+    const product=products.find(p=>p.id===item.productId),qty=Math.max(0,Math.floor(bundleNum(item.qty)));
+    return {product,qty,unitCost:product?getProductCalcs(product).cpu:0};
+  }).filter(line=>line.product&&line.qty>0);
+  const itemsCost=lines.reduce((sum,line)=>sum+line.unitCost*line.qty,0);
+  const regular=lines.reduce((sum,line)=>sum+bundleNum(line.product.price)*line.qty,0);
+  const hasRegular=lines.length>0&&lines.every(line=>bundleNum(line.product.price)>0);
+  const price=bundleNum(bundle.price),shipCost=bundleNum(bundle.shipCost),shipCharge=bundleNum(bundle.shipCharge);
+  const customerPays=price+shipCharge;
+  const fee=customerPays*pfRate('own'),vat=price*bundleNum(bundle.vatRate)/100;
+  const totalCost=itemsCost+shipCost+fee+vat,profit=customerPays-totalCost;
+  return {lines,itemsCost,regular,hasRegular,customerPays,fee,vat,shipCost,shipCharge,totalCost,profit,
+    margin:customerPays?100*profit/customerPays:0,saving:regular-price};
+}
+function mixedSummary(bundle){
+  const c=mixedCalc(bundle);
+  if(!c.lines.length)return '<p class="cost-empty">Add products to see the bundle figures.</p>';
+  const colour=c.profit<0?'var(--danger)':c.margin>=goodT()?'var(--success)':c.margin>=minT()?'var(--warn)':'var(--danger)';
+  const savings=c.hasRegular?bundleMoney(c.saving)+' ('+(100*c.saving/c.regular).toFixed(1)+'%)':'Add individual prices';
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px 18px;margin-top:12px;">
+    <div class="p-row"><span class="lbl">Items cost</span><strong>${bundleMoney(c.itemsCost)}</strong></div>
+    <div class="p-row"><span class="lbl">Customer saves</span><strong style="color:${c.saving>=0?'var(--success)':'var(--danger)'};">${savings}</strong></div>
+    <div class="p-row"><span class="lbl">Total costs</span><strong>${bundleMoney(c.totalCost)}</strong></div>
+    <div class="p-row"><span class="lbl">Profit per bundle</span><strong style="color:${colour};">${bundleMoney(c.profit)}</strong></div>
+    <div class="p-row"><span class="lbl">Margin</span><strong style="color:${colour};">${c.margin.toFixed(1)}%</strong></div>
+  </div>
+  <div style="font-size:12px;color:#7A60A0;margin-top:8px;">Customer pays ${bundleMoney(c.customerPays)} including ${bundleMoney(c.shipCharge)} delivery. Total costs include ${bundleMoney(c.shipCost)} postage, items, website fee${c.vat?' and VAT':''}. Savings compare the usual item prices in one order.</div>
+  ${(bundle.items||[]).some(item=>item.productId&&!products.some(p=>p.id===item.productId))?'<div style="font-size:12px;color:var(--danger);margin-top:5px;">A product is missing. Replace it before using these figures.</div>':''}
+  ${c.lines.some(line=>!line.unitCost)?'<div style="font-size:12px;color:var(--danger);margin-top:5px;">Some products have no saved unit cost. Check them before using this margin.</div>':''}`;
+}
+function renderMixedBundles(){
+  const list=document.getElementById('mixedBundleList'),editor=document.getElementById('mixedBundleEditor');
+  if(!list||!editor)return;
+  list.innerHTML=mixedBundles.length?mixedBundles.map(b=>`<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:10px 0;background:#fff;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <strong>${esc(b.name||'Unnamed bundle')} · ${bundleMoney(bundleNum(b.price))}</strong>
+      <div><button class="btn btn-outline btn-sm" onclick="editMixedBundle('${b.id}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteMixedBundle('${b.id}')">Remove</button></div>
+    </div>
+    <div style="font-size:12px;color:#7A60A0;margin-top:5px;">${(b.items||[]).map(item=>{
+      const p=products.find(x=>x.id===item.productId);return esc(p?.name||'Missing product')+' × '+(Math.floor(bundleNum(item.qty))||0);
+    }).join(' · ')}</div>
+    ${mixedSummary(b)}
+  </div>`).join(''):'<p class="cost-empty">No mixed bundles saved yet.</p>';
+  if(!mixedDraft){editor.innerHTML='';return;}
+  const rows=mixedDraft.items.map((item,i)=>{
+    const p=products.find(x=>x.id===item.productId),qty=Math.max(0,Math.floor(bundleNum(item.qty)));
+    return `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:8px 0;">
+      <div class="field" style="flex:3;min-width:190px;"><label>Product</label><select onchange="changeMixedItem(${i},this.value)">
+        <option value="">Select product</option>${products.map(x=>`<option value="${x.id}" ${x.id===item.productId?'selected':''}>${esc(x.name||'Unnamed')}</option>`).join('')}
+      </select></div>
+      <div class="field" style="flex:1;min-width:75px;"><label>Quantity</label><input type="text" inputmode="numeric" value="${esc(item.qty)}" oninput="updateMixedItem(${i},this.value)"></div>
+      <div style="font-size:12px;color:#7A60A0;min-width:135px;padding-bottom:7px;">${p?'Unit cost '+bundleMoney(getProductCalcs(p).cpu)+' · usual '+bundleMoney(bundleNum(p.price)):'Select a product'}</div>
+      <button class="btn btn-danger btn-sm" onclick="removeMixedItem(${i})">✕</button>
+    </div>`;
+  }).join('');
+  editor.innerHTML=`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;">
+    <strong>${mixedEditingId?'Edit mixed bundle':'New mixed bundle'}</strong>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;">
+      <div class="field" style="flex:2;min-width:180px;"><label>Bundle name</label><input type="text" value="${esc(mixedDraft.name)}" placeholder="e.g. Hydrate & Grow" oninput="updateMixedField('name',this.value)"></div>
+      <div class="field" style="flex:1;min-width:110px;"><label>Bundle price (£)</label><input type="text" inputmode="decimal" value="${esc(mixedDraft.price)}" placeholder="24.99" oninput="updateMixedField('price',this.value)"></div>
+    </div>
+    <div style="font-weight:600;font-size:13px;margin-top:15px;">Products in bundle</div>
+    ${rows}
+    <button class="btn btn-outline btn-sm" onclick="addMixedItem()">+ Add product</button>
+    <details style="font-size:12px;margin-top:15px;color:#7A60A0;"><summary style="cursor:pointer;">Delivery and VAT</summary>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">
+        <div class="field" style="min-width:145px;"><label>Postage cost (£)</label><input type="text" inputmode="decimal" value="${esc(mixedDraft.shipCost)}" oninput="updateMixedField('shipCost',this.value)"></div>
+        <div class="field" style="min-width:145px;"><label>Delivery charged (£)</label><input type="text" inputmode="decimal" value="${esc(mixedDraft.shipCharge)}" oninput="updateMixedField('shipCharge',this.value)"></div>
+        <div class="field" style="min-width:100px;"><label>VAT (%)</label><input type="text" inputmode="decimal" value="${esc(mixedDraft.vatRate)}" oninput="updateMixedField('vatRate',this.value)"></div>
+      </div><div style="margin-top:5px;">Set delivery charged to 0 for a free-shipping bundle. Check the actual postage cost for its weight.</div>
+    </details>
+    <div id="mixedDraftSummary">${mixedSummary(mixedDraft)}</div>
+    <div style="display:flex;gap:8px;margin-top:15px;">
+      <button class="btn btn-purple btn-sm" onclick="saveMixedBundle()">Save mixed bundle</button>
+      <button class="btn btn-outline btn-sm" onclick="mixedDraft=null;mixedEditingId=null;renderMixedBundles()">Cancel</button>
+    </div>
+  </div>`;
+}
+function newMixedBundle(){
+  mixedEditingId=null;
+  mixedDraft={name:'',price:'',shipCost:'2.92',shipCharge:'3',vatRate:'0',items:[{productId:'',qty:'1'}]};
+  renderMixedBundles();
+}
+function editMixedBundle(id){
+  const b=mixedBundles.find(x=>x.id===id);if(!b)return;
+  mixedEditingId=id;mixedDraft=JSON.parse(JSON.stringify(b));renderMixedBundles();
+}
+function addMixedItem(){if(!mixedDraft)return;mixedDraft.items.push({productId:'',qty:'1'});renderMixedBundles();}
+function changeMixedItem(i,id){mixedDraft.items[i].productId=id;renderMixedBundles();}
+function removeMixedItem(i){mixedDraft.items.splice(i,1);renderMixedBundles();}
+function updateMixedItem(i,val){mixedDraft.items[i].qty=val;renderMixedDraftTotals();}
+function updateMixedField(key,val){mixedDraft[key]=val;renderMixedDraftTotals();}
+function renderMixedDraftTotals(){
+  const el=document.getElementById('mixedDraftSummary');if(el&&mixedDraft)el.innerHTML=mixedSummary(mixedDraft);
+}
+async function saveMixedBundle(){
+  if(!mixedDraft)return;
+  const name=mixedDraft.name.trim(),price=bundleNum(mixedDraft.price);
+  const items=mixedDraft.items.filter(x=>x.productId&&Number.isInteger(bundleNum(x.qty))&&bundleNum(x.qty)>0);
+  if(!name||price<=0||!items.length||items.length!==mixedDraft.items.length||items.some(x=>!products.some(p=>p.id===x.productId))){toast('Add a name, price and valid product quantities');return;}
+  const saved={...mixedDraft,id:mixedEditingId||uid(),name,items};
+  const next=mixedEditingId?mixedBundles.map(b=>b.id===mixedEditingId?saved:b):[...mixedBundles,saved];
+  try{
+    await sbUp('nns_settings',{key:'mixed_bundles',value:next});
+    mixedBundles=next;mixedDraft=null;mixedEditingId=null;renderMixedBundles();
+    setSS('ok','✓ Mixed bundle saved');toast('Mixed bundle saved ✓');
+  }catch(e){setSS('err','⚠ Bundle save failed');console.error(e);toast('Bundle save failed');}
+}
+async function deleteMixedBundle(id){
+  const bundle=mixedBundles.find(b=>b.id===id);if(!bundle||!confirm('Remove "'+bundle.name+'"?'))return;
+  const next=mixedBundles.filter(b=>b.id!==id);
+  try{
+    await sbUp('nns_settings',{key:'mixed_bundles',value:next});
+    mixedBundles=next;if(mixedEditingId===id){mixedDraft=null;mixedEditingId=null;}
+    renderMixedBundles();setSS('ok','✓ Bundle removed');
+  }catch(e){setSS('err','⚠ Remove failed');console.error(e);toast('Could not remove bundle');}
 }
 
 // DASHBOARD
