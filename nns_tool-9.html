@@ -2181,12 +2181,11 @@ function renderDashboard(){
     const rows=listed.map(({p,calcs:{A,B}})=>`<tr>
       <td><strong>${esc(p.name)}</strong>${p.sku?`<br><span style="font-size:11px;color:#9A80B0;">${esc(p.sku)}</span>`:''}</td>
       <td class="mono">£${(p.price||0).toFixed(2)}</td>
-      <td class="mono"><div>£${A.profit.toFixed(2)} free delivery</div><div>£${B.profit.toFixed(2)} + delivery charge</div></td>
-      <td><div><span class="badge ${A.margin>=goodT()?'badge-green':A.margin>=minT()?'badge-amber':'badge-red'}">${A.margin.toFixed(1)}% free</span></div>
-        <div style="margin-top:4px;"><span class="badge ${B.margin>=goodT()?'badge-green':B.margin>=minT()?'badge-amber':'badge-red'}">${B.margin.toFixed(1)}% + delivery</span></div></td>
+      <td style="white-space:nowrap;"><span class="badge ${A.margin>=goodT()?'badge-green':A.margin>=minT()?'badge-amber':'badge-red'}">${A.margin.toFixed(1)}% free</span> <span class="badge ${B.margin>=goodT()?'badge-green':B.margin>=minT()?'badge-amber':'badge-red'}">${B.margin.toFixed(1)}% +ship</span></td>
+      <td class="mono" style="white-space:nowrap;">£${A.profit.toFixed(2)} free &nbsp; £${B.profit.toFixed(2)} +ship</td>
       <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="loadProduct('${p.id}')">Edit</button> <button class="btn btn-outline btn-xs" onclick="duplicateProduct('${p.id}')" title="Copy product">⧉ Copy</button></td>
     </tr>`).join('');
-    pt.innerHTML=`<table class="tbl"><thead><tr><th>Product</th><th>Price</th><th>Estimated profit / sale</th><th>Margin</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    pt.innerHTML=`<table class="tbl"><thead><tr><th>Product</th><th>Price</th><th>Margin</th><th>Est. profit</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   const it=document.getElementById('dashIngTop');
   const savings=ingredients.filter(i=>cheapestGBPPrice(i,'uk')&&cheapestGBPPrice(i,'fac')).map(i=>({name:i.name,pct:savingPct(i),uk:cheapestGBPPrice(i,'uk'),fac:cheapestGBPPrice(i,'fac'),unit:i.unit})).sort((a,b)=>b.pct-a.pct).slice(0,5);
