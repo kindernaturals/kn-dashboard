@@ -1821,7 +1821,8 @@ function updateProdSelector(){
   ['prodSelector','pricingProdSel'].forEach(sid=>{
     const sel=document.getElementById(sid);if(!sel)return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">— select product —</option>'+products.map(p=>`<option value="${p.id}">${esc(p.name||'Unnamed')}</option>`).join('');
+    const sorted=[...products].sort((a,b)=>(a.name||'').localeCompare(b.name||'','en-GB',{sensitivity:'base',numeric:true}));
+    sel.innerHTML='<option value="">— select product —</option>'+sorted.map(p=>`<option value="${p.id}">${esc(p.name||'Unnamed')}</option>`).join('');
     if(currentProdId&&sid==='prodSelector')sel.value=currentProdId;else if(cur)sel.value=cur;
   });
 }
