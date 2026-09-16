@@ -163,9 +163,13 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
     <div id="pane-dashboard">
       <div class="section-head">
         <span class="section-title">Overview</span>
-        <button class="btn btn-purple btn-sm" onclick="showPane('products');goNewProduct()">+ New product</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="jumpToNotes()">Notes</button>
+          <button class="btn btn-purple btn-sm" onclick="showPane('products');goNewProduct()">+ New product</button>
+        </div>
       </div>
       <div class="metrics" id="dashMetrics"></div>
+      <div class="card"><div class="card-head"><span class="card-title">📝 Notes &amp; reminders</span><button class="btn btn-outline btn-sm" onclick="jumpToNotes()">View all notes</button></div><div id="dashNotesWidget"></div></div>
       <div class="card"><div class="card-head"><span class="card-title">Products at a glance</span>
         <div class="field" style="min-width:175px;margin:0;"><label for="dashProductSort">Sort products</label>
           <select id="dashProductSort" onchange="renderDashboard()">
@@ -175,6 +179,12 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
           </select>
         </div></div><div id="dashProductTable"></div></div>
       <div class="card"><div class="card-head"><span class="card-title">Top ingredient savings (vs UK price)</span><button class="btn btn-outline btn-sm" onclick="showPane('ingredients')">View all</button></div><div id="dashIngTop"></div></div>
+      <div class="card" id="dashboardNotes">
+        <div class="card-head"><span class="card-title">All notes &amp; reminders</span><button class="btn btn-purple btn-sm" onclick="newNote()">+ Add note</button></div>
+        <div id="noteEditor"></div>
+        <div id="notesList"></div>
+        <div style="font-size:11px;color:#7A60A0;margin-top:10px;">Notes are shared with other dashboard users. Due dates appear here; they do not send notifications.</div>
+      </div>
     </div>
 
     <!-- INGREDIENTS -->
@@ -197,8 +207,8 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
     <div id="pane-packaging" style="display:none;">
       <div class="section-head">
         <span class="section-title">Packaging library</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <div class="field" style="min-width:160px;margin:0;"><label for="pkgSort">Sort packaging</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="field" style="width:185px;flex:0 0 185px;min-width:0;margin:0;"><label for="pkgSort">Sort packaging</label>
             <select id="pkgSort" onchange="renderPkgTable()">
               <option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option>
               <option value="type-asc">Type A–Z</option>
@@ -515,6 +525,7 @@ let fxRates=[{currency:'USD',rate:0.79},{currency:'EUR',rate:0.86},{currency:'CN
 let currentUser=null,currentProdId=null,shipMode='both';
 let recipeRows=[],costs={packaging:[],labour:[],other:[]},bundleRows=[];
 let mixedBundles=[],mixedDraft=null,mixedEditingId=null;
+let dashboardNotes=[],noteDraft=null,noteSaving=false;
 let editIngId=null,ctr=0;
 // modal supplier rows
 let modalUKSuppliers=[],modalFacSuppliers=[];
@@ -597,6 +608,8 @@ async function loadAll(){
     if(fRow&&fRow.value)fxRates=fRow.value;
     const mixedRow=setts.find(s=>s.key==='mixed_bundles');
     mixedBundles=Array.isArray(mixedRow?.value)?mixedRow.value:[];
+    const notesRow=setts.find(s=>s.key==='dashboard_notes');
+    dashboardNotes=Array.isArray(notesRow?.value)?notesRow.value:[];
     packagingItems=(pkgs||[]).map(i=>({id:i.id,name:i.name,category:i.category||'other',unit:i.unit||'unit',notes:i.notes||'',ukSuppliers:Array.isArray(i.supplier_uk)?i.supplier_uk:[],facSuppliers:Array.isArray(i.supplier_fac)?i.supplier_fac:[]}));
     applySettingsUI();renderFxRows();
     setSS('ok','✓ Live');
@@ -2310,6 +2323,109 @@ async function deleteMixedBundle(id){
   }catch(e){setSS('err','⚠ Remove failed');console.error(e);toast('Could not remove bundle');}
 }
 
+// DASHBOARD NOTES
+function notesToday(){
+  const d=new Date();
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+}
+function openNotes(){
+  return dashboardNotes.filter(n=>!n.done).sort((a,b)=>{
+    const da=a.due||'9999-12-31',db=b.due||'9999-12-31';
+    return da.localeCompare(db)||(b.createdAt||'').localeCompare(a.createdAt||'');
+  });
+}
+function jumpToNotes(){document.getElementById('dashboardNotes')?.scrollIntoView({behavior:'smooth'});}
+function noteDueLabel(due){
+  if(!due)return '';
+  const date=new Date(due+'T00:00:00');
+  const label=Number.isNaN(date.getTime())?due:date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  return (due<notesToday()?'Overdue: ':due===notesToday()?'Today: ':'Due: ')+label;
+}
+function renderNotes(){
+  const widget=document.getElementById('dashNotesWidget'),list=document.getElementById('notesList'),editor=document.getElementById('noteEditor');
+  if(!widget||!list||!editor)return;
+  const open=openNotes();
+  widget.innerHTML=open.length?open.slice(0,3).map(n=>{
+    const product=products.find(p=>p.id===n.productId);
+    return `<div class="p-row" style="align-items:center;gap:10px;">
+      <span><strong>${esc(n.title)}</strong>${product?` <span style="color:#7A60A0;">· ${esc(product.name)}</span>`:''}
+        ${n.due?`<span style="color:${n.due<notesToday()?'var(--danger)':'#7A60A0'};"> · ${esc(noteDueLabel(n.due))}</span>`:''}</span>
+      <button class="btn btn-outline btn-xs" onclick="toggleNote('${n.id}')">Done</button>
+    </div>`;
+  }).join('')+(open.length>3?`<div style="font-size:12px;color:#7A60A0;margin-top:7px;">+${open.length-3} more open notes</div>`:'')
+    :'<p class="cost-empty">No open notes. Add one below when something needs following up.</p>';
+
+  if(noteDraft){
+    editor.innerHTML=`<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:10px;">${noteDraft.id?'Edit note':'New note'}</div>
+      <div class="field"><label>Reminder</label><input id="noteTitle" value="${esc(noteDraft.title)}" placeholder="e.g. Add formula detail for Thrive Spray" oninput="updateNoteDraft('title',this.value)"></div>
+      <div class="field" style="margin-top:9px;"><label>Details (optional)</label><textarea id="noteDetails" rows="2" placeholder="Add the details you want to remember" oninput="updateNoteDraft('details',this.value)">${esc(noteDraft.details)}</textarea></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;">
+        <div class="field" style="flex:2;min-width:170px;"><label>Product (optional)</label><select onchange="updateNoteDraft('productId',this.value)">
+          <option value="">No product</option>${[...products].sort((a,b)=>compareNames(a.name,b.name)).map(p=>`<option value="${p.id}" ${p.id===noteDraft.productId?'selected':''}>${esc(p.name)}</option>`).join('')}
+        </select></div>
+        <div class="field" style="flex:1;min-width:155px;"><label>Due date (optional)</label><input type="date" value="${esc(noteDraft.due)}" oninput="updateNoteDraft('due',this.value)"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-purple btn-sm" onclick="saveNote()" ${noteSaving?'disabled':''}>${noteSaving?'Saving...':'Save note'}</button>
+        <button class="btn btn-outline btn-sm" onclick="noteDraft=null;renderNotes()">Cancel</button>
+      </div>
+    </div>`;
+  }else editor.innerHTML='';
+
+  const completed=dashboardNotes.filter(n=>n.done).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  const card=n=>{
+    const product=products.find(p=>p.id===n.productId);
+    return `<div style="border-bottom:1px solid var(--border);padding:9px 0;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:210px;">
+        <strong style="${n.done?'text-decoration:line-through;color:#9A80B0;':''}">${esc(n.title)}</strong>
+        ${n.details?`<div style="font-size:12px;white-space:pre-wrap;margin-top:3px;">${esc(n.details)}</div>`:''}
+        <div style="font-size:11px;margin-top:4px;color:#7A60A0;">
+          ${product?`<button class="btn btn-outline btn-xs" onclick="loadProduct('${product.id}')">Open ${esc(product.name)}</button>`:n.productId?'Product removed':''}
+          ${n.due?`<span style="margin-left:5px;color:${!n.done&&n.due<notesToday()?'var(--danger)':'#7A60A0'};">${esc(noteDueLabel(n.due))}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:start;gap:5px;">
+        <button class="btn btn-outline btn-xs" onclick="toggleNote('${n.id}')">${n.done?'Restore':'Done'}</button>
+        <button class="btn btn-outline btn-xs" onclick="editNote('${n.id}')">Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteNote('${n.id}')">✕</button>
+      </div>
+    </div>`;
+  };
+  list.innerHTML=open.length?'<div style="font-size:12px;font-weight:600;">Open ('+open.length+')</div>'+open.map(card).join(''):'<p class="cost-empty">No open notes.</p>';
+  if(completed.length)list.innerHTML+='<details style="margin-top:14px;"><summary style="cursor:pointer;font-size:12px;color:#7A60A0;">Completed ('+completed.length+')</summary>'+completed.map(card).join('')+'</details>';
+}
+function newNote(){
+  noteDraft={title:'',details:'',productId:'',due:'',done:false,createdAt:new Date().toISOString()};
+  renderNotes();jumpToNotes();document.getElementById('noteTitle')?.focus();
+}
+function editNote(id){const n=dashboardNotes.find(x=>x.id===id);if(!n)return;noteDraft={...n};renderNotes();jumpToNotes();}
+function updateNoteDraft(field,value){if(noteDraft)noteDraft[field]=value;}
+async function persistNotes(next){
+  if(noteSaving)return false;
+  noteSaving=true;
+  try{
+    await sbUp('nns_settings',{key:'dashboard_notes',value:next});
+    dashboardNotes=next;setSS('ok','✓ Notes saved');return true;
+  }catch(e){setSS('err','⚠ Notes not saved');console.error(e);toast('Notes could not be saved');return false;}
+  finally{noteSaving=false;renderNotes();}
+}
+async function saveNote(){
+  if(!noteDraft||noteSaving)return;
+  const title=noteDraft.title.trim();if(!title){toast('Add a reminder first');document.getElementById('noteTitle')?.focus();return;}
+  const note={...noteDraft,id:noteDraft.id||uid(),title,details:noteDraft.details.trim()};
+  const next=noteDraft.id?dashboardNotes.map(n=>n.id===note.id?note:n):[...dashboardNotes,note];
+  if(await persistNotes(next)){noteDraft=null;renderNotes();toast('Note saved');}
+}
+async function toggleNote(id){
+  const next=dashboardNotes.map(n=>n.id===id?{...n,done:!n.done}:n);
+  await persistNotes(next);
+}
+async function deleteNote(id){
+  const n=dashboardNotes.find(x=>x.id===id);if(!n||!confirm('Delete this note?'))return;
+  if(await persistNotes(dashboardNotes.filter(x=>x.id!==id))&&noteDraft?.id===id){noteDraft=null;renderNotes();}
+}
+
 // DASHBOARD
 function renderDashboard(){
   const m=document.getElementById('dashMetrics');
@@ -2349,6 +2465,7 @@ function renderDashboard(){
   const savings=ingredients.filter(i=>cheapestGBPPrice(i,'uk')&&cheapestGBPPrice(i,'fac')).map(i=>({name:i.name,pct:savingPct(i),uk:cheapestGBPPrice(i,'uk'),fac:cheapestGBPPrice(i,'fac'),unit:i.unit})).sort((a,b)=>b.pct-a.pct).slice(0,5);
   if(!savings.length){it.innerHTML='<div class="empty-state">Add ingredients with both UK and factory prices to see savings here.</div>';}
   else{it.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>Best UK £/unit</th><th>Best factory £/unit</th><th>Saving</th></tr></thead><tbody>`+savings.map(s=>`<tr><td>${esc(s.name)}</td><td class="mono">£${s.uk.toFixed(3)}/${s.unit}</td><td class="mono">£${s.fac.toFixed(3)}/${s.unit}</td><td>${s.pct>0?`<span class="saving-pill">Save ${s.pct.toFixed(0)}%</span>`:`<span class="worse-pill">Factory costs more</span>`}</td></tr>`).join('')+'</tbody></table>';}
+  renderNotes();
 }
 
 // EXPORT
