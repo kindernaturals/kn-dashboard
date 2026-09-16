@@ -182,11 +182,14 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
       <div class="section-head">
         <span class="section-title">Ingredient library</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="downloadIngredientTemplate()">⬇ Import template</button>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;">⬆ Import CSV <input type="file" accept=".csv,text/csv" style="display:none" onchange="previewIngredientCSV(this)"></label>
           <button class="btn btn-outline btn-sm" onclick="exportIngredients()">⬇ CSV</button>
           <button class="btn btn-purple btn-sm" onclick="openIngModal()">+ Add ingredient</button>
         </div>
       </div>
       <div class="hint">Add multiple UK suppliers and factory/wholesale sources per ingredient with different quantities and currencies. Your VA's changes appear instantly.</div>
+      <div class="card" id="ingredientImportPreview" style="display:none;"></div>
       <div class="card" style="padding:0;overflow:hidden;"><div id="ingTable"></div></div>
     </div>
 
@@ -544,7 +547,14 @@ async function sbGet(t){
     return r.json();
   }catch(e){clearTimeout(timer);throw e;}
 }
-async function sbUp(t,data){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbUp(t,data){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data),signal:controller.signal});
+    if(!r.ok)throw new Error(await r.text());
+    return r.json();
+  }finally{clearTimeout(timer);}
+}
 async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_H});if(!r.ok)throw new Error(await r.text());}
 
 async function loadAll(){
@@ -838,6 +848,121 @@ function exportIngredients(){
   const heads=['Name','Unit','Notes','UK Suppliers (count)','Best UK price/unit £','Factory Suppliers (count)','Best Factory price/unit £','Saving %','Best Source'];
   const rows=sortedIngredients().map(i=>[i.name,i.unit,i.notes,i.ukSuppliers?.length||0,cheapestGBPPrice(i,'uk').toFixed(3),i.facSuppliers?.length||0,cheapestGBPPrice(i,'fac').toFixed(3),savingPct(i)?.toFixed(1)||'—',cheaperSource(i)]);
   dlCSV([heads,...rows],'kn_ingredients');
+}
+let ingredientImportDraft=null,ingredientImportSaving=false;
+function downloadIngredientTemplate(){
+  dlCSV([
+    ['ingredient_name','base_unit','notes','supplier_type','supplier_name','quantity','price','currency'],
+    ['Aloe Vera Juice','L','Refrigerate after opening','UK','Example Supplier','1','8.50','GBP'],
+    ['Aloe Vera Juice','L','','Factory','Example Factory','5','30.00','GBP'],
+    ['Shea Butter','kg','','UK','Example Supplier','1','6.00','GBP']
+  ],'kn_ingredient_import_template');
+}
+function closeIngredientImport(){
+  ingredientImportDraft=null;
+  ingredientImportSaving=false;
+  document.getElementById('ingredientImportPreview').style.display='none';
+}
+async function previewIngredientCSV(input){
+  const file=input.files?.[0];if(!file)return;
+  input.value='';
+  try{
+    const rows=parseCSVText(await file.text());
+    const headers=(rows.shift()||[]).map(h=>h.trim().toLowerCase().replace(/^\ufeff/,''));
+    const required=['ingredient_name','base_unit','supplier_type','supplier_name','quantity','price'];
+    const missing=required.filter(h=>!headers.includes(h));
+    if(missing.length){alert('Missing CSV columns: '+missing.join(', '));return;}
+    const at=(row,key)=>String(row[headers.indexOf(key)]||'').trim();
+    const groups=new Map(),errors=[];
+    let lastName='';
+    rows.forEach((row,index)=>{
+      const rowNo=index+2,name=at(row,'ingredient_name')||lastName;
+      if(!name){errors.push('Row '+rowNo+': ingredient name missing');return;}
+      lastName=name;
+      const key=name.toLocaleLowerCase('en-GB'),rawUnit=at(row,'base_unit');
+      const unit=rawUnit.toLowerCase()==='l'?'L':rawUnit.toLowerCase();
+      let group=groups.get(key);
+      if(!group){
+        group={name,unit:'',notes:'',ukSuppliers:[],facSuppliers:[],issues:[]};
+        groups.set(key,group);
+      }
+      if(unit){
+        if(!['kg','L','g','ml','unit'].includes(unit))group.issues.push('row '+rowNo+': invalid base unit');
+        else if(group.unit&&group.unit!==unit)group.issues.push('row '+rowNo+': conflicting base unit');
+        else group.unit=unit;
+      }
+      if(at(row,'notes'))group.notes=at(row,'notes');
+      const type=at(row,'supplier_type').toLowerCase();
+      const supplierName=at(row,'supplier_name');
+      const qty=Number(at(row,'quantity')),price=Number(at(row,'price'));
+      const currency=(at(row,'currency')||'GBP').toUpperCase();
+      if(!['uk','factory'].includes(type)||!supplierName||!Number.isFinite(qty)||qty<=0||
+         !Number.isFinite(price)||price<=0||!availCurrencies().includes(currency)){
+        group.issues.push('row '+rowNo+': check supplier type, name, quantity, price and currency');
+        return;
+      }
+      const target=type==='uk'?group.ukSuppliers:group.facSuppliers;
+      let supplier=target.find(s=>s.name.toLowerCase()===supplierName.toLowerCase());
+      if(!supplier){supplier={name:supplierName,tiers:[]};target.push(supplier);}
+      supplier.tiers.push({qty,price,currency});
+    });
+    const entries=[...groups.values()].map(g=>{
+      if(!g.unit)g.issues.push('base unit missing');
+      if(!g.ukSuppliers.length&&!g.facSuppliers.length)g.issues.push('no valid supplier price');
+      g.existing=ingredients.some(i=>i.name.trim().toLocaleLowerCase('en-GB')===g.name.trim().toLocaleLowerCase('en-GB'));
+      return g;
+    });
+    ingredientImportDraft={entries,errors};
+    renderIngredientImportPreview();
+  }catch(e){console.error(e);setSS('err','⚠ Could not read ingredient CSV');}
+}
+function renderIngredientImportPreview(){
+  const wrap=document.getElementById('ingredientImportPreview'),draft=ingredientImportDraft;if(!wrap||!draft)return;
+  const valid=draft.entries.filter(g=>!g.existing&&!g.issues.length);
+  const existing=draft.entries.filter(g=>g.existing).length,invalid=draft.entries.filter(g=>!g.existing&&g.issues.length).length;
+  wrap.style.display='block';
+  const rows=draft.entries.map(g=>{
+    const state=g.existing?'Already in library — skipped':g.issues.length?'Needs fixing: '+g.issues.join('; '):'Ready to import';
+    return `<tr><td>${esc(g.name)}</td><td>${esc(g.unit||'—')}</td><td>${esc(state)}</td></tr>`;
+  }).join('');
+  wrap.innerHTML=`<div class="card-head"><span class="card-title">Review ingredient import</span></div>
+    <p style="font-size:13px;">${valid.length} new ready · ${existing} already in library (skipped) · ${invalid+draft.errors.length} need fixing. Existing ingredients will not be changed.</p>
+    <div style="max-height:270px;overflow:auto;"><table class="tbl"><thead><tr><th>Ingredient</th><th>Unit</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${draft.errors.length?`<p style="font-size:12px;color:var(--danger);">${esc(draft.errors.join(' · '))}</p>`:''}
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-purple btn-sm" onclick="saveIngredientImport()" ${valid.length&&!ingredientImportSaving?'':'disabled'}>${ingredientImportSaving?'Saving...':'Import '+valid.length+' new ingredient'+(valid.length===1?'':'s')}</button>
+      <button class="btn btn-outline btn-sm" onclick="closeIngredientImport()">Cancel</button>
+    </div>`;
+}
+async function saveIngredientImport(){
+  const draft=ingredientImportDraft;if(!draft)return;
+  if(ingredientImportSaving)return;
+  const ready=draft.entries.filter(g=>!g.existing&&!g.issues.length);
+  if(!ready.length)return;
+  ingredientImportSaving=true;renderIngredientImportPreview();
+  const newIngredients=ready.map(g=>{
+    const supplierList=list=>list.map(s=>{
+      const tiers=s.tiers.map((t,i)=>({...t,id:stableId(s.name+'tier'+i+t.price+t.qty)}));
+      return {id:stableId(s.name+tiers.map(t=>t.price).join('')),name:s.name,tiers};
+    });
+    return {id:uid(),name:g.name,unit:g.unit,notes:g.notes,ukSuppliers:supplierList(g.ukSuppliers),facSuppliers:supplierList(g.facSuppliers)};
+  });
+  const payload=newIngredients.map(i=>({
+    id:i.id,name:i.name,unit:i.unit,notes:i.notes,
+    supplier_uk:i.ukSuppliers,supplier_fac:i.facSuppliers,
+    price_uk:cheapestGBPPrice(i,'uk'),price_fac:cheapestGBPPrice(i,'fac')
+  }));
+  setSS('ing','⟳ Saving '+payload.length+' ingredients...');
+  try{
+    await sbUp('nns_ingredients',payload);
+    ingredients.push(...newIngredients);renderIngTable();refreshRecipeDropdowns();
+    closeIngredientImport();setSS('ok','✓ '+payload.length+' ingredients imported');
+    toast(payload.length+' ingredients imported');
+  }catch(e){
+    ingredientImportSaving=false;renderIngredientImportPreview();
+    setSS('err','⚠ Ingredient import failed');console.error(e);
+    alert('The save did not finish. Refresh and check the ingredient library before trying again, to avoid duplicates.');
+  }
 }
 
 // ── PACKAGING LIBRARY ─────────────────────────────────────────────────
@@ -1626,6 +1751,34 @@ async function saveProduct(){
 
 // ── CSV IMPORT / EXPORT ────────────────────────────────────────────────
 
+function parseCSVText(text){
+  const rows=[];let row=[],field='',quoted=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){
+      if(quoted&&text[i+1]==='"'){field+='"';i++;}
+      else quoted=!quoted;
+    }else if(c===','&&!quoted){row.push(field);field='';}
+    else if((c==='\n'||c==='\r')&&!quoted){
+      if(c==='\r'&&text[i+1]==='\n')i++;
+      row.push(field);field='';
+      if(row.some(v=>v.trim()))rows.push(row);
+      row=[];
+    }else field+=c;
+  }
+  row.push(field);if(row.some(v=>v.trim()))rows.push(row);
+  if(quoted)throw new Error('CSV has an unclosed quoted field');
+  return rows;
+}
+function matchImportItem(items,name){
+  const wanted=name.trim().toLocaleLowerCase('en-GB');
+  const exact=items.filter(x=>x.name.trim().toLocaleLowerCase('en-GB')===wanted);
+  if(exact.length===1)return exact[0];
+  if(exact.length>1)return null;
+  const partial=items.filter(x=>x.name.toLocaleLowerCase('en-GB').includes(wanted));
+  return partial.length===1?partial[0]:null;
+}
+
 function downloadFormulaTemplate() {
   const headers = [
     'product_name',
@@ -1669,13 +1822,13 @@ async function importFormulaCSV(input) {
   const file = input.files[0];
   if(!file) return;
   setSS('ing','⟳ Importing...');
-
-  const text = await file.text();
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-  if(lines.length < 2) { setSS('err','⚠ CSV appears empty'); return; }
+  let lines;
+  try{lines=parseCSVText(await file.text());}
+  catch(e){setSS('err','⚠ CSV could not be read');alert(e.message);input.value='';return;}
+  if(lines.length < 2) { setSS('err','⚠ CSV appears empty'); input.value='';return; }
 
   // Parse CSV headers
-  const headers = parseCSVRow(lines[0]);
+  const headers = lines[0].map(h=>h.replace(/^\ufeff/,''));
   const col = (name) => headers.findIndex(h=>h.toLowerCase().trim()===name.toLowerCase());
 
   const iProductName = col('product_name');
@@ -1692,13 +1845,16 @@ async function importFormulaCSV(input) {
   const iIngPct      = col('ingredient_pct');
   const iPkgName     = col('pkg_item_name');
   const iPkgQty      = col('pkg_qty');
+  const missingColumns=['product_name','ingredient_name','ingredient_pct'].filter(h=>col(h)<0);
+  if(missingColumns.length){setSS('err','⚠ Missing CSV columns');alert('Missing columns: '+missingColumns.join(', '));input.value='';return;}
 
   // Group rows by product name
   const productMap = {};
   let currentProduct = null;
+  const missingIngredients=new Set(),missingPackaging=new Set(),invalidPercent=new Set();
 
   for(let i=1; i<lines.length; i++){
-    const row = parseCSVRow(lines[i]);
+    const row = lines[i];
     if(!row.length) continue;
 
     const productName = row[iProductName]?.trim();
@@ -1731,7 +1887,7 @@ async function importFormulaCSV(input) {
     const ingPct  = parseFloat(row[iIngPct])||0;
     if(ingName && ingPct>0) {
       // Find ingredient by name
-      const ing = ingredients.find(x=>x.name.toLowerCase().includes(ingName.toLowerCase()));
+      const ing = matchImportItem(ingredients,ingName);
       if(ing) {
         productMap[currentProduct].formula.push({
           ingId: ing.id,
@@ -1740,15 +1896,17 @@ async function importFormulaCSV(input) {
           tierId: ''
         });
       } else {
-        console.warn('Ingredient not found:', ingName);
+        missingIngredients.add(ingName);
       }
+    } else if(ingName) {
+      invalidPercent.add(ingName);
     }
 
     // Add packaging
     const pkgName = row[iPkgName]?.trim();
     const pkgQty  = parseFloat(row[iPkgQty])||1;
     if(pkgName) {
-      const pkg = packagingItems.find(x=>x.name.toLowerCase().includes(pkgName.toLowerCase()));
+      const pkg = matchImportItem(packagingItems,pkgName);
       if(pkg) {
         // Only add if not already added for this product
         const already = productMap[currentProduct].pkgItems.find(x=>x.pkgId===pkg.id);
@@ -1756,19 +1914,27 @@ async function importFormulaCSV(input) {
           productMap[currentProduct].pkgItems.push({pkgId: pkg.id, qty: pkgQty});
         }
       } else {
-        console.warn('Packaging not found:', pkgName);
+        missingPackaging.add(pkgName);
       }
     }
   }
 
-  // Save each product
-  let saved = 0, errors = [];
+  const problems=[];
+  if(missingIngredients.size)problems.push('Ingredients not matched: '+[...missingIngredients].join(', '));
+  if(invalidPercent.size)problems.push('Ingredients with blank or zero percentages: '+[...invalidPercent].join(', '));
+  if(missingPackaging.size)problems.push('Packaging not matched: '+[...missingPackaging].join(', '));
+  if(problems.length){
+    setSS('err','⚠ Import needs corrections');
+    alert(problems.join('\n\n')+'\n\nNothing was imported. Correct these entries and try again.');
+    input.value='';return;
+  }
+
+  // Save products together. Do not change the displayed products until the save succeeds.
+  const pending=[];
   for(const [name, prod] of Object.entries(productMap)) {
-    // Check if product already exists
     const existing = products.find(p=>p.name.toLowerCase()===name.toLowerCase());
     if(existing) {
-      // Update existing product formula data
-      Object.assign(existing, {
+      pending.push({...existing,
         formula: prod.formula,
         pkgItems: prod.pkgItems,
         formulaBatchSize: prod.formulaBatchSize,
@@ -1777,32 +1943,24 @@ async function importFormulaCSV(input) {
         formulaLabour: prod.formulaLabour,
         formulaWaste: 0
       });
-      try {
-        const{id,...rest}=existing;
-        await sbUp('nns_products',{id,data:rest});
-        saved++;
-      } catch(e) { errors.push(name); }
     } else {
-      // Create new product
-      prod.id = uid();
-      products.push(prod);
-      try {
-        const{id,...rest}=prod;
-        await sbUp('nns_products',{id,data:rest});
-        saved++;
-      } catch(e) { errors.push(name); }
+      pending.push({...prod,id:uid()});
     }
   }
-
-  // Reset input
-  input.value = '';
-  renderProdList();
-  updateProdSelector();
-
-  if(errors.length) {
-    setSS('err',`⚠ ${saved} imported, ${errors.length} failed: ${errors.join(', ')}`);
-  } else {
-    setSS('ok',`✓ ${saved} product${saved>1?'s':''} imported successfully`);
+  input.value='';
+  if(!pending.length){setSS('err','⚠ No products found');return;}
+  setSS('ing',`⟳ Saving ${pending.length} product${pending.length===1?'':'s'}...`);
+  try{
+    await sbUp('nns_products',pending.map(({id,...data})=>({id,data})));
+    for(const prod of pending){
+      const index=products.findIndex(p=>p.id===prod.id);
+      if(index>=0)products[index]=prod;else products.push(prod);
+    }
+    renderProdList();updateProdSelector();
+    setSS('ok',`✓ ${pending.length} product${pending.length===1?'':'s'} imported`);
+  }catch(e){
+    console.error(e);setSS('err','⚠ Import save failed');
+    alert('The save did not finish. Refresh and check the product before trying again, to avoid duplicates.');
   }
 }
 
