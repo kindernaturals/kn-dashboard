@@ -1927,22 +1927,14 @@ function bundleSummary(b,prod){
   const regular=bundleNum(prod.price)*qty,saving=regular-price;
   const savingPct=regular?100*saving/regular:0;
   const colour=profit<0?'var(--danger)':margin>=goodT()?'var(--success)':margin>=minT()?'var(--warn)':'var(--danger)';
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px;">
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px 18px;margin-top:12px;">
     <div class="p-row"><span class="lbl">Cost per item</span><strong>${bundleMoney(unitCost)}</strong></div>
-    <div class="p-row"><span class="lbl">Bundle price per item</span><strong>${bundleMoney(price/qty)}</strong></div>
-    <div class="p-row"><span class="lbl">Regular item prices (one order)</span><strong>${regular?bundleMoney(regular):'Set single price'}</strong></div>
     <div class="p-row"><span class="lbl">Customer saves</span><strong style="color:${saving>=0?'var(--success)':'var(--danger)'};">${regular?bundleMoney(saving)+' ('+savingPct.toFixed(1)+'%)':'—'}</strong></div>
-    <div class="p-row"><span class="lbl">Items cost (${qty})</span><strong>${bundleMoney(productCost)}</strong></div>
-    <div class="p-row"><span class="lbl">Postage cost (one order)</span><strong>${bundleMoney(shipCost)}</strong></div>
-    <div class="p-row"><span class="lbl">Delivery charged</span><strong>${bundleMoney(shipCharge)}</strong></div>
-    <div class="p-row"><span class="lbl">${esc(prod.platform||'own')} fee</span><strong>${bundleMoney(fee)}</strong></div>
-    <div class="p-row"><span class="lbl">VAT</span><strong>${bundleMoney(vat)}</strong></div>
     <div class="p-row"><span class="lbl">Total costs</span><strong>${bundleMoney(totalCost)}</strong></div>
-    <div class="p-row"><span class="lbl">Total cost per item incl. shared costs</span><strong>${bundleMoney(totalCost/qty)}</strong></div>
-    <div class="p-row"><span class="lbl">Customer pays incl. delivery</span><strong>${bundleMoney(customerPays)}</strong></div>
     <div class="p-row"><span class="lbl">Profit per bundle</span><strong style="color:${colour};">${bundleMoney(profit)}</strong></div>
-    <div class="p-row"><span class="lbl">Profit margin</span><strong style="color:${colour};">${margin.toFixed(1)}%</strong></div>
-  </div>`;
+    <div class="p-row"><span class="lbl">Margin</span><strong style="color:${colour};">${margin.toFixed(1)}%</strong></div>
+  </div>
+  <div style="font-size:12px;color:#7A60A0;margin-top:8px;">Customer pays ${bundleMoney(customerPays)} including ${bundleMoney(shipCharge)} delivery. Total costs include ${bundleMoney(shipCost)} postage, items, fees${vat?' and VAT':''}. Savings compare ${qty} items at the single price in one order.</div>`;
 }
 function renderBundles(){
   const pid=vv('pricingProdSel'),prod=pid?products.find(x=>x.id===pid):null;
@@ -1952,11 +1944,15 @@ function renderBundles(){
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;">
       <div class="field" style="flex:1;min-width:90px;"><label>Number of items</label><input type="text" inputmode="numeric" value="${esc(b.qty)}" placeholder="2" oninput="updBundle(${b.id},'qty',this.value)"></div>
       <div class="field" style="flex:1;min-width:115px;"><label>Bundle price (£)</label><input type="text" inputmode="decimal" value="${esc(b.price)}" placeholder="13.49" oninput="updBundle(${b.id},'price',this.value)"></div>
-      <div class="field" style="flex:1;min-width:125px;"><label>Postage cost (£)</label><input type="text" inputmode="decimal" value="${esc(b.shipCost??'')}" placeholder="${prod?bundleMoney(bundleNum(prod.shipCPU)).slice(1):'2.92'}" oninput="updBundle(${b.id},'shipCost',this.value)"></div>
-      <div class="field" style="flex:1;min-width:135px;"><label>Delivery charged (£)</label><input type="text" inputmode="decimal" value="${esc(b.shipCharge??'')}" placeholder="${prod?bundleMoney(bundleNum(prod.shipCharge)).slice(1):'3.00'}" oninput="updBundle(${b.id},'shipCharge',this.value)"></div>
       <button class="btn btn-danger btn-sm" onclick="remBundle(${b.id})" aria-label="Remove bundle">✕</button>
     </div>
     <div id="bundleSummary${b.id}">${bundleSummary(b,prod)}</div>
+    <details style="font-size:12px;margin-top:10px;color:#7A60A0;"><summary style="cursor:pointer;">Change delivery for this bundle</summary>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">
+        <div class="field" style="min-width:145px;"><label>Postage cost (£)</label><input type="text" inputmode="decimal" value="${esc(b.shipCost??'')}" placeholder="${prod?bundleMoney(bundleNum(prod.shipCPU)).slice(1):'2.92'}" oninput="updBundle(${b.id},'shipCost',this.value)"></div>
+        <div class="field" style="min-width:145px;"><label>Delivery charged (£)</label><input type="text" inputmode="decimal" value="${esc(b.shipCharge??'')}" placeholder="${prod?bundleMoney(bundleNum(prod.shipCharge)).slice(1):'3.00'}" oninput="updBundle(${b.id},'shipCharge',this.value)"></div>
+      </div>
+    </details>
   </div>`).join('');
 }
 function updBundle(id,f,val){
