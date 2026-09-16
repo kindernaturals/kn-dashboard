@@ -669,6 +669,9 @@ function savingPct(ing){
   const uk=cheapestGBPPrice(ing,'uk'),fac=cheapestGBPPrice(ing,'fac');
   if(!uk||!fac)return null;return((uk-fac)/uk*100);
 }
+function sortedIngredients(){
+  return [...ingredients].sort((a,b)=>(a.name||'').localeCompare(b.name||'','en-GB',{sensitivity:'base',numeric:true}));
+}
 function cheaperSource(ing){
   const uk=cheapestGBPPrice(ing,'uk'),fac=cheapestGBPPrice(ing,'fac');
   if(!uk&&!fac)return '—';if(!uk)return 'factory';if(!fac)return 'uk';return fac<uk?'factory':'uk';
@@ -751,8 +754,8 @@ function openIngModal(id){
   document.getElementById('ingName').value=ing?ing.name:'';
   document.getElementById('ingUnit').value=ing?ing.unit:'kg';
   document.getElementById('ingNotes').value=ing?ing.notes:'';
-  modalUKSuppliers=ing?(ing.ukSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({id:cid(),...t}))})):[];
-  modalFacSuppliers=ing?(ing.facSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({id:cid(),...t}))})):[];
+  modalUKSuppliers=ing?(ing.ukSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({...t,id:cid()}))})):[];
+  modalFacSuppliers=ing?(ing.facSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({...t,id:cid()}))})):[];
   if(!modalUKSuppliers.length)modalUKSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
   if(!modalFacSuppliers.length)modalFacSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
   renderModalSuppliers();
@@ -784,11 +787,23 @@ async function saveIngredient(){
   closeIngModal();renderIngTable();refreshRecipeDropdowns();toast('Ingredient saved');
 }
 async function deleteIng(id){if(!confirm('Delete this ingredient?'))return;ingredients=ingredients.filter(x=>x.id!==id);await delIngDB(id);renderIngTable();}
+async function duplicateIngredient(id){
+  const original=ingredients.find(x=>x.id===id);if(!original)return;
+  const copy=JSON.parse(JSON.stringify(original));
+  copy.id=uid();copy.name=original.name+' (Copy)';
+  try{
+    await sbUp('nns_ingredients',{id:copy.id,name:copy.name,unit:copy.unit,notes:copy.notes||'',
+      supplier_uk:copy.ukSuppliers,supplier_fac:copy.facSuppliers,
+      price_uk:cheapestGBPPrice(copy,'uk'),price_fac:cheapestGBPPrice(copy,'fac')});
+    ingredients.push(copy);renderIngTable();refreshRecipeDropdowns();openIngModal(copy.id);
+    setSS('ok','✓ Ingredient copied');toast('Ingredient copied — edit the new copy');
+  }catch(e){setSS('err','⚠ Ingredient copy failed');console.error(e);toast('Could not copy ingredient');}
+}
 
 function renderIngTable(){
   const wrap=document.getElementById('ingTable');
   if(!ingredients.length){wrap.innerHTML='<div class="empty-state">No ingredients yet — click <strong>Add ingredient</strong> to start.</div>';return;}
-  const rows=ingredients.map(ing=>{
+  const rows=sortedIngredients().map(ing=>{
     const sp=savingPct(ing),src=cheaperSource(ing);
     const ukBest=cheapestGBPPrice(ing,'uk'),facBest=cheapestGBPPrice(ing,'fac');
     const ukCount=ing.ukSuppliers?.length||0,facCount=ing.facSuppliers?.length||0;
@@ -799,14 +814,14 @@ function renderIngTable(){
       <td><span style="font-size:11px;color:#9A80B0;">${ukCount} supplier${ukCount!==1?'s':''}</span><br><span class="mono">${ukBest>0?'£'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
       <td><span style="font-size:11px;color:#9A80B0;">${facCount} supplier${facCount!==1?'s':''}</span><br><span class="mono">${facBest>0?'£'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
       <td>${saveBadge}</td><td>${recBadge}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="openIngModal('${ing.id}')">Edit</button><button class="btn btn-danger btn-xs" style="margin-left:4px;" onclick="deleteIng('${ing.id}')">✕</button></td>
+      <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="openIngModal('${ing.id}')">Edit</button><button class="btn btn-outline btn-xs" style="margin-left:4px;" onclick="duplicateIngredient('${ing.id}')">⧉ Copy</button><button class="btn btn-danger btn-xs" style="margin-left:4px;" onclick="deleteIng('${ing.id}')">✕</button></td>
     </tr>`;
   }).join('');
   wrap.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>Best UK price/${vv('ingUnit')||'unit'}</th><th>Best factory price</th><th>Saving</th><th>Best source</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function exportIngredients(){
   const heads=['Name','Unit','Notes','UK Suppliers (count)','Best UK price/unit £','Factory Suppliers (count)','Best Factory price/unit £','Saving %','Best Source'];
-  const rows=ingredients.map(i=>[i.name,i.unit,i.notes,i.ukSuppliers?.length||0,cheapestGBPPrice(i,'uk').toFixed(3),i.facSuppliers?.length||0,cheapestGBPPrice(i,'fac').toFixed(3),savingPct(i)?.toFixed(1)||'—',cheaperSource(i)]);
+  const rows=sortedIngredients().map(i=>[i.name,i.unit,i.notes,i.ukSuppliers?.length||0,cheapestGBPPrice(i,'uk').toFixed(3),i.facSuppliers?.length||0,cheapestGBPPrice(i,'fac').toFixed(3),savingPct(i)?.toFixed(1)||'—',cheaperSource(i)]);
   dlCSV([heads,...rows],'kn_ingredients');
 }
 
@@ -1207,7 +1222,7 @@ function renderFormula() {
   } else {
     wrap.innerHTML = formulaRows.map((r,i) => {
       const ing = ingredients.find(x=>x.id===r.ingId);
-      const ingOpts = ingredients.map(x=>`<option value="${x.id}"${x.id===r.ingId?' selected':''}>${esc(x.name)} (${x.unit})</option>`).join('');
+      const ingOpts = sortedIngredients().map(x=>`<option value="${x.id}"${x.id===r.ingId?' selected':''}>${esc(x.name)} (${x.unit})</option>`).join('');
       const {supplierOpts, tierOpts} = getSupplierTierOpts(ing, r);
 
       // Calculate qty and cost
@@ -1274,7 +1289,7 @@ function renderFormula() {
 
 // ── RECIPE ─────────────────────────────────────────────────────────────
 function addRecipeRow(ingId="",qty="",supplierId="",tierId=""){recipeRows.push({id:cid(),ingId,qty,supplierId,tierId});renderRecipeRows();}
-function refreshRecipeDropdowns(){renderRecipeRows();}
+function refreshRecipeDropdowns(){renderRecipeRows();renderFormula();}
 function getSupplierTierOpts(ing,r){
   if(!ing)return{supplierOpts:'',tierOpts:''};
   const allS=[...(ing.ukSuppliers||[]).map(s=>({...s,type:'uk'})),...(ing.facSuppliers||[]).map(s=>({...s,type:'fac'}))];
@@ -1300,7 +1315,7 @@ function renderRecipeRows(){
   if(!recipeRows.length){wrap.innerHTML='<p class="cost-empty">No ingredients added yet.</p>';document.getElementById('recipeCostSummary').innerHTML='';return;}
   wrap.innerHTML=recipeRows.map((r,i)=>{
     const ing=ingredients.find(x=>x.id===r.ingId);
-    const ingOpts=ingredients.map(x=>`<option value="${x.id}"${x.id===r.ingId?' selected':''}>${esc(x.name)}</option>`).join('');
+    const ingOpts=sortedIngredients().map(x=>`<option value="${x.id}"${x.id===r.ingId?' selected':''}>${esc(x.name)}</option>`).join('');
     const{supplierOpts,tierOpts}=getSupplierTierOpts(ing,r);
     return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 80px 34px;gap:6px;align-items:end;margin-bottom:6px;">
       <div class="field">${i===0?'<label>Ingredient</label>':''}<select onchange="updRecipe(${r.id},'ingId',this.value)"><option value="">— select —</option>${ingOpts}</select></div>
