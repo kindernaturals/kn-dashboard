@@ -345,9 +345,10 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
       <div id="pricingOutput"></div>
       <div class="card" style="border-left:3px solid var(--purple);">
         <div class="card-head"><span class="card-title">🎁 Bundle pricing</span></div>
-        <div class="hint">Set bundle prices to see profit and per-unit cost instantly.</div>
+        <div class="hint">Compare bundle prices with buying the same items individually. Delivery is charged once per order; edit the postage cost for heavier bundles.</div>
         <div id="bundleRows"></div>
         <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addBundleRow()">+ Add bundle tier</button>
+        <button class="btn btn-purple btn-sm" style="margin-top:8px;" onclick="saveBundles()">Save bundles</button>
       </div>
     </div>
 
@@ -1561,7 +1562,8 @@ async function saveProduct(){
   const formulaBatchUnit=document.getElementById('fBatchUnit').value||'g';
   const formulaWaste=parseFloat(document.getElementById('fWaste').value)||3;
   const formulaLabour=parseFloat(document.getElementById('fLabour').value)||0;
-  const data={id:currentProdId||uid(),name,sku:vv('pSku').trim(),batchSize:nv('pBatch')||1,price:nv('pPrice'),platform:vv('pPlatform'),vatRate:nv('pVat'),shipCPU:nv('pShipCost'),shipCharge:nv('pShipCharge'),costs:sc,recipe,pkgRecipe,formula,fillSizes:fillSizesSaved,pkgItems:pkgItemsSaved,formulaBatchSize,formulaBatchUnit,formulaWaste,formulaLabour,formulaFillSize};
+  const existingProduct=products.find(p=>p.id===currentProdId);
+  const data={id:currentProdId||uid(),name,sku:vv('pSku').trim(),batchSize:nv('pBatch')||1,price:nv('pPrice'),platform:vv('pPlatform'),vatRate:nv('pVat'),shipCPU:nv('pShipCost'),shipCharge:nv('pShipCharge'),costs:sc,recipe,pkgRecipe,formula,fillSizes:fillSizesSaved,pkgItems:pkgItemsSaved,formulaBatchSize,formulaBatchUnit,formulaWaste,formulaLabour,formulaFillSize,bundleTiers:existingProduct?.bundleTiers||[]};
   if(currentProdId){const idx=products.findIndex(p=>p.id===currentProdId);if(idx>-1)products[idx]=data;}
   else{currentProdId=data.id;products.push(data);}
   await saveProdDB(data);updateProdSelector();document.getElementById('prodSelector').value=currentProdId;toast('Product saved ✓');
@@ -1802,10 +1804,11 @@ function updateProdSelector(){
 
 // PRICING
 function updatePricingSelectors(){updateProdSelector();}
-function setShipMode(m){shipMode=m;['both','free','charged'].forEach(x=>document.getElementById('sopt-'+x).classList.toggle('active',x===m));renderPricing();}
+function setShipMode(m){shipMode=m;['both','free','charged'].forEach(x=>document.getElementById('sopt-'+x).classList.toggle('active',x===m));renderPricing();renderBundles();}
 function onPricingProdChange(){
   const id=vv('pricingProdSel');
   const p=id?products.find(x=>x.id===id):null;
+  bundleRows=(p?.bundleTiers||[]).map(b=>({...b,id:cid()}));
   const wrap=document.getElementById('fillSizeSelWrap');
   const sel=document.getElementById('pricingFillSel');
 
@@ -1839,6 +1842,7 @@ function onPricingProdChange(){
     if(wrap)wrap.style.display='none';
   }
   renderPricing();
+  renderBundles();
 }
 
 function renderPricing(){
@@ -1906,32 +1910,75 @@ function renderPricing(){
 }
 
 // BUNDLES
-function addBundleRow(q='',p=''){bundleRows.push({id:cid(),qty:q,price:p});renderBundles();}
+function bundleMoney(n){return '£'+n.toFixed(2);}
+function bundleNum(v){return Number(String(v).replace(',','.'))||0;}
+function addBundleRow(q='',p=''){bundleRows.push({id:cid(),qty:q,price:p,shipCost:'',shipCharge:''});renderBundles();}
+function bundleSummary(b,prod){
+  const qty=bundleNum(b.qty),price=bundleNum(b.price);
+  if(!prod||!qty||!price)return '<p class="cost-empty">Select a product and enter a quantity and bundle price to see the breakdown.</p>';
+  const unitCost=getProductCalcs(prod,vv('pricingFillSel')||'__new__').cpu;
+  const shipCost=b.shipCost===''||b.shipCost===undefined?bundleNum(prod.shipCPU):bundleNum(b.shipCost);
+  const shipCharge=b.shipCharge===''||b.shipCharge===undefined?bundleNum(prod.shipCharge):bundleNum(b.shipCharge);
+  const productCost=unitCost*qty,customerPays=price+shipCharge;
+  const fee=customerPays*pfRate(prod.platform||'own');
+  const vat=price*bundleNum(prod.vatRate)/100;
+  const totalCost=productCost+shipCost+fee+vat;
+  const profit=customerPays-totalCost,margin=customerPays?100*profit/customerPays:0;
+  const regular=bundleNum(prod.price)*qty,saving=regular-price;
+  const savingPct=regular?100*saving/regular:0;
+  const colour=profit<0?'var(--danger)':margin>=goodT()?'var(--success)':margin>=minT()?'var(--warn)':'var(--danger)';
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px;">
+    <div class="p-row"><span class="lbl">Cost per item</span><strong>${bundleMoney(unitCost)}</strong></div>
+    <div class="p-row"><span class="lbl">Bundle price per item</span><strong>${bundleMoney(price/qty)}</strong></div>
+    <div class="p-row"><span class="lbl">Regular item prices (one order)</span><strong>${regular?bundleMoney(regular):'Set single price'}</strong></div>
+    <div class="p-row"><span class="lbl">Customer saves</span><strong style="color:${saving>=0?'var(--success)':'var(--danger)'};">${regular?bundleMoney(saving)+' ('+savingPct.toFixed(1)+'%)':'—'}</strong></div>
+    <div class="p-row"><span class="lbl">Items cost (${qty})</span><strong>${bundleMoney(productCost)}</strong></div>
+    <div class="p-row"><span class="lbl">Postage cost (one order)</span><strong>${bundleMoney(shipCost)}</strong></div>
+    <div class="p-row"><span class="lbl">Delivery charged</span><strong>${bundleMoney(shipCharge)}</strong></div>
+    <div class="p-row"><span class="lbl">${esc(prod.platform||'own')} fee</span><strong>${bundleMoney(fee)}</strong></div>
+    <div class="p-row"><span class="lbl">VAT</span><strong>${bundleMoney(vat)}</strong></div>
+    <div class="p-row"><span class="lbl">Total costs</span><strong>${bundleMoney(totalCost)}</strong></div>
+    <div class="p-row"><span class="lbl">Total cost per item incl. shared costs</span><strong>${bundleMoney(totalCost/qty)}</strong></div>
+    <div class="p-row"><span class="lbl">Customer pays incl. delivery</span><strong>${bundleMoney(customerPays)}</strong></div>
+    <div class="p-row"><span class="lbl">Profit per bundle</span><strong style="color:${colour};">${bundleMoney(profit)}</strong></div>
+    <div class="p-row"><span class="lbl">Profit margin</span><strong style="color:${colour};">${margin.toFixed(1)}%</strong></div>
+  </div>`;
+}
 function renderBundles(){
   const pid=vv('pricingProdSel'),prod=pid?products.find(x=>x.id===pid):null;
   const wrap=document.getElementById('bundleRows');
   if(!bundleRows.length){wrap.innerHTML='<p class="cost-empty">No bundles yet.</p>';return;}
-  wrap.innerHTML=bundleRows.map((b,i)=>{
-    const qty=parseFloat(b.qty)||0,price=parseFloat(b.price)||0;let info='';
-    if(prod&&qty&&price){
-      const{A}=getProductCalcs(prod);const tc=A.cpu*qty;
-      const pf=pfRate(prod.platform||'own'),vat=(prod.vatRate||0)/100;
-      const profit=price-price*pf-price*vat-tc,margin=price>0?(profit/price)*100:0,perBar=price/qty;
-      const bc=margin>=goodT()?'var(--success)':margin>=minT()?'var(--warn)':'var(--danger)';
-      info=`<span style="font-size:12px;color:#7A60A0;">£${perBar.toFixed(2)}/unit</span>
-        <span style="font-family:'DM Mono',monospace;font-size:13px;color:${profit>=0?'var(--success)':'var(--danger)'};">£${profit.toFixed(2)} profit</span>
-        <span style="font-family:'DM Mono',monospace;font-size:13px;color:${bc};">${margin.toFixed(1)}%</span>`;
-    }
-    return `<div style="display:grid;grid-template-columns:80px 120px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
-      <div class="field"><label>${i===0?'Units':''}</label><input type="number" min="1" value="${b.qty}" placeholder="2" oninput="updBundle(${b.id},'qty',this.value)"></div>
-      <div class="field"><label>${i===0?'Price (£)':''}</label><input type="number" step="0.01" value="${b.price}" placeholder="9.99" oninput="updBundle(${b.id},'price',this.value)"></div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">${info}</div>
-      <button class="btn btn-danger btn-sm" onclick="remBundle(${b.id})">✕</button>
-    </div>`;
-  }).join('');
+  wrap.innerHTML=bundleRows.map(b=>`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:#fff;">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;">
+      <div class="field" style="flex:1;min-width:90px;"><label>Number of items</label><input type="text" inputmode="numeric" value="${esc(b.qty)}" placeholder="2" oninput="updBundle(${b.id},'qty',this.value)"></div>
+      <div class="field" style="flex:1;min-width:115px;"><label>Bundle price (£)</label><input type="text" inputmode="decimal" value="${esc(b.price)}" placeholder="13.49" oninput="updBundle(${b.id},'price',this.value)"></div>
+      <div class="field" style="flex:1;min-width:125px;"><label>Postage cost (£)</label><input type="text" inputmode="decimal" value="${esc(b.shipCost??'')}" placeholder="${prod?bundleMoney(bundleNum(prod.shipCPU)).slice(1):'2.92'}" oninput="updBundle(${b.id},'shipCost',this.value)"></div>
+      <div class="field" style="flex:1;min-width:135px;"><label>Delivery charged (£)</label><input type="text" inputmode="decimal" value="${esc(b.shipCharge??'')}" placeholder="${prod?bundleMoney(bundleNum(prod.shipCharge)).slice(1):'3.00'}" oninput="updBundle(${b.id},'shipCharge',this.value)"></div>
+      <button class="btn btn-danger btn-sm" onclick="remBundle(${b.id})" aria-label="Remove bundle">✕</button>
+    </div>
+    <div id="bundleSummary${b.id}">${bundleSummary(b,prod)}</div>
+  </div>`).join('');
 }
-function updBundle(id,f,val){const b=bundleRows.find(x=>x.id===id);if(b){b[f]=val;renderBundles();}}
+function updBundle(id,f,val){
+  const b=bundleRows.find(x=>x.id===id);if(!b)return;
+  b[f]=val;
+  const pid=vv('pricingProdSel'),prod=pid?products.find(x=>x.id===pid):null;
+  const summary=document.getElementById('bundleSummary'+id);
+  if(summary)summary.innerHTML=bundleSummary(b,prod);
+}
 function remBundle(id){bundleRows=bundleRows.filter(x=>x.id!==id);renderBundles();}
+async function saveBundles(){
+  const pid=vv('pricingProdSel'),prod=products.find(x=>x.id===pid);
+  if(!prod){toast('Select a product first');return;}
+  const tiers=bundleRows.map(({qty,price,shipCost,shipCharge})=>({qty,price,shipCost,shipCharge}));
+  const updated={...prod,bundleTiers:tiers};
+  try{
+    const{id,...rest}=updated;
+    await sbUp('nns_products',{id,data:rest});
+    products[products.findIndex(x=>x.id===pid)]=updated;
+    setSS('ok','✓ Bundles saved');toast('Bundles saved ✓');
+  }catch(e){setSS('err','⚠ Bundle save failed');console.error(e);toast('Bundle save failed');}
+}
 
 // DASHBOARD
 function renderDashboard(){
