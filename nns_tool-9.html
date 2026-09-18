@@ -124,6 +124,29 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
   .sug-grid{grid-template-columns:1fr;}
   .tier-row{grid-template-columns:70px 80px 80px 60px 28px;}
 }
+
+@media (max-width:600px){
+  /* Library rows become cards so Edit and Copy remain on screen. */
+  :is(#ingTable,#pkgTable) .tbl,:is(#ingTable,#pkgTable) .tbl tbody{display:block;width:100%;}
+  :is(#ingTable,#pkgTable) .tbl thead{display:none;}
+  :is(#ingTable,#pkgTable) .tbl tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:12px 14px;border-bottom:1px solid var(--border);gap:7px 12px;}
+  :is(#ingTable,#pkgTable) .tbl tr:last-child{border-bottom:0;}
+  :is(#ingTable,#pkgTable) .tbl td{display:block;min-width:0;padding:0;border:0;overflow-wrap:anywhere;}
+  :is(#ingTable,#pkgTable) .tbl td:first-child{grid-column:1/-1;}
+  :is(#ingTable,#pkgTable) .tbl td:first-child strong{font-size:15px!important;}
+  :is(#ingTable,#pkgTable) .tbl td:nth-child(2)::before,:is(#ingTable,#pkgTable) .tbl td:nth-child(3)::before,:is(#ingTable,#pkgTable) .tbl td:nth-child(4)::before,:is(#ingTable,#pkgTable) .tbl td:nth-child(5)::before{display:block;font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#7A60A0;}
+  #ingTable .tbl td:nth-child(2)::before{content:'Best UK price';}
+  #ingTable .tbl td:nth-child(3)::before{content:'Best factory price';}
+  #ingTable .tbl td:nth-child(4)::before{content:'Saving';}
+  #ingTable .tbl td:nth-child(5)::before{content:'Best source';}
+  #pkgTable .tbl td:nth-child(2)::before{content:'Type';}
+  #pkgTable .tbl td:nth-child(3)::before{content:'Best UK price';}
+  #pkgTable .tbl td:nth-child(4)::before{content:'Best factory price';}
+  #pkgTable .tbl td:nth-child(5)::before{content:'Saving';}
+  :is(#ingTable,#pkgTable) .tbl td:last-child{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;padding-top:9px;border-top:1px solid var(--border);white-space:normal!important;}
+  :is(#ingTable,#pkgTable) .tbl td:last-child .btn{min-height:40px;margin-left:0!important;justify-content:center;}
+  :is(#ingTable,#pkgTable) .tbl td:last-child .btn-danger{margin-left:auto!important;}
+}
 </style>
 </head>
 <body>
