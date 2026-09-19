@@ -741,12 +741,12 @@ function cheaperSource(ing){
 // MODAL SUPPLIER ROWS
 function addSupplierRow(type,data){
   const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
-  arr.push({id:cid(),name:data?.name||'',tiers:data?.tiers||[{id:cid(),qty:1,price:'',currency:'GBP'}]});
+  arr.push({id:cid(),persistentId:data?.id||'',name:data?.name||'',tiers:(data?.tiers||[{qty:1,price:'',currency:'GBP'}]).map(t=>({id:cid(),persistentId:t.id||'',qty:t.qty,price:t.price,currency:t.currency||'GBP'}))});
   renderModalSuppliers();
 }
 function addTierToSupplier(type,sid){
   const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
-  const s=arr.find(x=>x.id===sid);if(s)s.tiers.push({id:cid(),qty:'',price:'',currency:'GBP'});
+  const s=arr.find(x=>x.id===sid);if(s)s.tiers.push({id:cid(),persistentId:'',qty:'',price:'',currency:'GBP'});
   renderModalSuppliers();
 }
 function remSupplier(type,sid){
@@ -815,10 +815,10 @@ function openIngModal(id){
   document.getElementById('ingName').value=ing?ing.name:'';
   document.getElementById('ingUnit').value=ing?ing.unit:'kg';
   document.getElementById('ingNotes').value=ing?ing.notes:'';
-  modalUKSuppliers=ing?(ing.ukSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({...t,id:cid()}))})):[];
-  modalFacSuppliers=ing?(ing.facSuppliers||[]).map(s=>({id:cid(),name:s.name||'',tiers:(s.tiers||[]).map(t=>({...t,id:cid()}))})):[];
-  if(!modalUKSuppliers.length)modalUKSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
-  if(!modalFacSuppliers.length)modalFacSuppliers=[{id:cid(),name:'',tiers:[{id:cid(),qty:1,price:'',currency:'GBP'}]}];
+  modalUKSuppliers=ing?(ing.ukSuppliers||[]).map(s=>({id:cid(),persistentId:s.id||'',name:s.name||'',tiers:(s.tiers||[]).map(t=>({...t,id:cid(),persistentId:t.id||''}))})):[];
+  modalFacSuppliers=ing?(ing.facSuppliers||[]).map(s=>({id:cid(),persistentId:s.id||'',name:s.name||'',tiers:(s.tiers||[]).map(t=>({...t,id:cid(),persistentId:t.id||''}))})):[];
+  if(!modalUKSuppliers.length)modalUKSuppliers=[{id:cid(),persistentId:'',name:'',tiers:[{id:cid(),persistentId:'',qty:1,price:'',currency:'GBP'}]}];
+  if(!modalFacSuppliers.length)modalFacSuppliers=[{id:cid(),persistentId:'',name:'',tiers:[{id:cid(),persistentId:'',qty:1,price:'',currency:'GBP'}]}];
   renderModalSuppliers();
   document.getElementById('ingModal').style.display='block';
 }
@@ -833,10 +833,10 @@ async function saveIngredient(){
     return arr.filter(s=>s.name||s.tiers.some(t=>t.price)).map(s=>{
       const sname=s.name||'';
       const tiers=s.tiers.filter(t=>t.price).map((t,ti)=>{
-        const tid=stableId(sname+'tier'+ti+(t.price||0)+(t.qty||1));
+        const tid=t.persistentId||stableId(sname+'tier'+ti+(t.price||0)+(t.qty||1));
         return {id:tid,qty:parseFloat(t.qty)||1,price:parseFloat(t.price),currency:t.currency||'GBP'};
       });
-      const sid=stableId(sname+tiers.map(t=>t.price).join(''));
+      const sid=s.persistentId||stableId(sname+tiers.map(t=>t.price).join(''));
       return {id:sid,name:sname,tiers};
     });
   }
