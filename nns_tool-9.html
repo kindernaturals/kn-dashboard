@@ -264,20 +264,20 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
           <div class="field span2"><label>Product name</label><input id="pName" placeholder="e.g. African Black Soap Bar 140g" oninput="recalc()"></div>
           <div class="field"><label>SKU</label><input id="pSku" placeholder="ABS-140G"></div>
           <div class="field" style="display:none;"><label>Batch size (units)</label><input id="pBatch" type="number" value="1" min="1" oninput="recalc()"></div>
-          <div class="field"><label>Selling price (£) excl. shipping</label><input id="pPrice" type="number" step="0.01" placeholder="5.99" oninput="recalc()"></div>
+          <div class="field"><label>Selling price (£) excl. shipping</label><input id="pPrice" type="text" inputmode="decimal" placeholder="5.99" oninput="recalc()"></div>
           <div class="field"><label>Platform</label>
             <select id="pPlatform" onchange="recalc()">
               <option value="own">Own website</option><option value="etsy">Etsy</option><option value="ebay">eBay</option>
             </select>
           </div>
-          <div class="field"><label>VAT (%)</label><input id="pVat" type="number" step="0.1" value="0" oninput="recalc()"></div>
+          <div class="field"><label>VAT (%)</label><input id="pVat" type="text" inputmode="decimal" value="0" oninput="recalc()"></div>
         </div>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:0.75rem;">🚚 Shipping</div>
         <div class="field-grid">
-          <div class="field"><label>Your cost to ship per unit (£)</label><input id="pShipCost" type="number" step="0.01" placeholder="1.16" oninput="recalc()"></div>
-          <div class="field"><label>Charge to customer (£)</label><input id="pShipCharge" type="number" step="0.01" placeholder="2.99" oninput="recalc()"></div>
+          <div class="field"><label>Your cost to ship per unit (£)</label><input id="pShipCost" type="text" inputmode="decimal" placeholder="1.16" oninput="recalc()"></div>
+          <div class="field"><label>Charge to customer (£)</label><input id="pShipCharge" type="text" inputmode="decimal" placeholder="2.99" oninput="recalc()"></div>
         </div>
       </div>
       <!-- CARD 1: FORMULA INGREDIENTS -->
@@ -290,7 +290,7 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;padding:14px;background:var(--cream-dark);border-radius:10px;">
           <div class="field">
             <label>Total batch size</label>
-            <input type="number" id="fBatchSize" placeholder="e.g. 2500" step="0.1" oninput="renderFormula()" style="font-size:15px;font-weight:600;">
+            <input type="text" inputmode="decimal" id="fBatchSize" placeholder="e.g. 2500" oninput="renderFormula()" style="font-size:15px;font-weight:600;">
           </div>
           <div class="field">
             <label>Batch unit</label>
@@ -318,11 +318,11 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:14px;background:var(--cream-dark);border-radius:10px;margin-bottom:18px;">
           <div class="field">
             <label>Fill size (per unit)</label>
-            <input type="number" id="fFillSize" placeholder="e.g. 250" step="0.1" oninput="renderFormula()">
+            <input type="text" inputmode="decimal" id="fFillSize" placeholder="e.g. 250" oninput="renderFormula()">
           </div>
           <div class="field">
             <label>Labour cost (£ per batch)</label>
-            <input type="number" id="fLabour" placeholder="e.g. 10.00" step="0.01" oninput="renderFormula()">
+            <input type="text" inputmode="decimal" id="fLabour" placeholder="e.g. 10.00" oninput="renderFormula()">
           </div>
           <div style="display:flex;align-items:flex-end;padding-bottom:4px;">
             <div id="unitsBatchDisplay" style="font-size:13px;color:#6B35A8;font-weight:600;"></div>
@@ -643,13 +643,13 @@ async function saveIngToDB(ing){
   setSS('ing','⟳ Saving...');
   try{
     await sbUp('nns_ingredients',{id:ing.id,name:ing.name,unit:ing.unit,notes:ing.notes||'',supplier_uk:ing.ukSuppliers,supplier_fac:ing.facSuppliers,price_uk:cheapestGBPPrice(ing,'uk'),price_fac:cheapestGBPPrice(ing,'fac')});
-    setSS('ok','✓ Saved');
-  }catch(e){setSS('err','⚠ Save failed');console.error(e);}
+    setSS('ok','✓ Saved');return true;
+  }catch(e){setSS('err','⚠ Save failed');console.error(e);return false;}
 }
 async function delIngDB(id){try{await sbDel('nns_ingredients',id);setSS('ok','✓ Deleted');}catch(e){setSS('err','⚠ Failed');}}
 async function saveProdDB(prod){
   setSS('ing','⟳ Saving...');
-  try{const{id,...rest}=prod;await sbUp('nns_products',{id,data:rest});setSS('ok','✓ Saved');}catch(e){setSS('err','⚠ Save failed');console.error(e);}
+  try{const{id,...rest}=prod;await sbUp('nns_products',{id,data:rest});setSS('ok','✓ Saved');return true;}catch(e){setSS('err','⚠ Save failed');console.error(e);return false;}
 }
 async function delProdDB(id){try{await sbDel('nns_products',id);setSS('ok','✓ Deleted');}catch(e){setSS('err','⚠ Failed');}}
 async function saveSetDB(key,value){try{await sbUp('nns_settings',{key,value});setSS('ok','✓ Saved');}catch(e){setSS('err','⚠ Failed');}}
@@ -766,7 +766,7 @@ function updSupplierName(type,sid,val){
 function updTier(type,sid,tid,field,val){
   const arr=type==='uk'?modalUKSuppliers:modalFacSuppliers;
   const s=arr.find(x=>x.id===sid);if(!s)return;
-  const t=s.tiers.find(x=>x.id===tid);if(t)t[field]=field==='qty'||field==='price'?parseFloat(val)||0:val;
+  const t=s.tiers.find(x=>x.id===tid);if(t)t[field]=val;
 }
 
 function renderModalSuppliers(){
@@ -796,8 +796,8 @@ function renderModalSuppliers(){
         ${s.tiers.map(t=>{
           const gbp=t.price&&t.qty?toGBP(t.price,t.currency||'GBP')/Math.max(1,t.qty):0;
           return `<div style="display:grid;grid-template-columns:80px 100px 90px auto 28px;gap:6px;align-items:center;margin-bottom:5px;">
-            <input type="number" step="0.1" value="${t.qty}" placeholder="1" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updTier('${type}',${s.id},${t.id},'qty',this.value)">
-            <input type="number" step="0.01" value="${t.price}" placeholder="0.00" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updTier('${type}',${s.id},${t.id},'price',this.value)">
+            <input type="text" inputmode="decimal" value="${t.qty}" placeholder="1" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updTier('${type}',${s.id},${t.id},'qty',this.value)">
+            <input type="text" inputmode="decimal" value="${t.price}" placeholder="0.00" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updTier('${type}',${s.id},${t.id},'price',this.value)">
             <select style="padding:5px 6px;font-size:12px;border-radius:6px;" onchange="updTier('${type}',${s.id},${t.id},'currency',this.value)">${currs.map(c=>`<option value="${c}"${(t.currency||'GBP')===c?' selected':''}>${c}</option>`).join('')}</select>
             <span style="font-size:11px;font-family:'DM Mono',monospace;color:${gbp>0?'var(--success)':'#9A80B0'};">${gbp>0?'£'+gbp.toFixed(3):'—'}</span>
             <button class="btn btn-danger btn-xs" onclick="remTier('${type}',${s.id},${t.id})">✕</button>
@@ -842,9 +842,10 @@ async function saveIngredient(){
   }
   const cleanSuppliers=type=>readSuppliersFromDOM(type);
   const data={id:editIngId||uid(),name,unit:vv('ingUnit'),notes:vv('ingNotes'),ukSuppliers:cleanSuppliers('uk'),facSuppliers:cleanSuppliers('fac')};
+  const saved=await saveIngToDB(data);
+  if(!saved){alert('The ingredient did not save. Your entries are still open so you can try again.');return;}
   if(editIngId){const idx=ingredients.findIndex(x=>x.id===editIngId);if(idx>-1)ingredients[idx]=data;}
   else{ingredients.push(data);}
-  await saveIngToDB(data);
   closeIngModal();renderIngTable();refreshRecipeDropdowns();toast('Ingredient saved');
 }
 async function deleteIng(id){if(!confirm('Delete this ingredient?'))return;ingredients=ingredients.filter(x=>x.id!==id);await delIngDB(id);renderIngTable();}
@@ -1081,7 +1082,7 @@ function updPkgSupName(type,sid,val){const arr=type==='uk'?modalPkgUKSuppliers:m
 function updPkgTier(type,sid,tid,field,val){
   const arr=type==='uk'?modalPkgUKSuppliers:modalPkgFacSuppliers;
   const s=arr.find(x=>x.id===sid);if(!s)return;
-  const t=s.tiers.find(x=>x.id===tid);if(t)t[field]=field==='qty'||field==='price'?parseFloat(val)||0:val;
+  const t=s.tiers.find(x=>x.id===tid);if(t)t[field]=val;
 }
 
 function renderPkgModalSuppliers(){
@@ -1113,7 +1114,7 @@ function renderPkgModalSuppliers(){
           const gbp=t.price&&t.qty?toGBP(t.price,t.currency||'GBP')/Math.max(1,t.qty):0;
           return `<div style="display:grid;grid-template-columns:80px 100px 90px auto 28px;gap:6px;align-items:center;margin-bottom:5px;">
             <input type="number" step="1" value="${t.qty}" placeholder="1" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updPkgTier('${type}',${s.id},${t.id},'qty',this.value)">
-            <input type="number" step="0.01" value="${t.price}" placeholder="0.00" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updPkgTier('${type}',${s.id},${t.id},'price',this.value)">
+            <input type="text" inputmode="decimal" value="${t.price}" placeholder="0.00" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--cream);" oninput="updPkgTier('${type}',${s.id},${t.id},'price',this.value)">
             <select style="padding:5px 6px;font-size:12px;border-radius:6px;" onchange="updPkgTier('${type}',${s.id},${t.id},'currency',this.value)">${currs.map(c=>`<option value="${c}"${(t.currency||'GBP')===c?' selected':''}>${c}</option>`).join('')}</select>
             <span style="font-size:11px;font-family:'DM Mono',monospace;color:${gbp>0?'var(--success)':'#9A80B0'};">${gbp>0?'£'+gbp.toFixed(3):'—'}</span>
             <button class="btn btn-danger btn-xs" onclick="remPkgTier('${type}',${s.id},${t.id})">✕</button>
@@ -1439,7 +1440,7 @@ function renderFormula() {
         <div class="field">${i===0?'<label>Ingredient</label>':''}
           <select onchange="updFormula(${r.id},'ingId',this.value)"><option value="">— select —</option>${ingOpts}</select></div>
         <div class="field">${i===0?'<label>%</label>':''}
-          <input type="number" step="0.1" min="0" max="100" value="${r.pct}" placeholder="e.g. 20" oninput="formulaRows.find(x=>x.id===${r.id}).pct=this.value;updateFormulaCosts();" style="font-weight:600;color:var(--purple);"></div>
+          <input type="text" inputmode="decimal" value="${r.pct}" placeholder="e.g. 20" oninput="formulaRows.find(x=>x.id===${r.id}).pct=this.value;updateFormulaCosts();" style="font-weight:600;color:var(--purple);"></div>
         <div class="field">${i===0?'<label>Supplier</label>':''}
           <select onchange="updFormula(${r.id},'supplierId',this.value)">${supplierOpts}</select></div>
         <div class="field">${i===0?'<label>Price tier</label>':''}
@@ -1512,7 +1513,7 @@ function renderRecipeRows(){
       <div class="field">${i===0?'<label>Ingredient</label>':''}<select onchange="updRecipe(${r.id},'ingId',this.value)"><option value="">— select —</option>${ingOpts}</select></div>
       <div class="field">${i===0?'<label>Supplier</label>':''}<select onchange="updRecipe(${r.id},'supplierId',this.value)">${supplierOpts}</select></div>
       <div class="field">${i===0?'<label>Price tier</label>':''}<select onchange="updRecipe(${r.id},'tierId',this.value)">${tierOpts}</select></div>
-      <div class="field">${i===0?`<label>Qty (${ing?ing.unit:'g/ml'})</label>`:''}  <input type="number" step="0.1" value="${r.qty}" placeholder="${ing&&isPerUnit(ing.unit)?'1':'50'}" oninput="updRecipe(${r.id},'qty',this.value)"></div>
+      <div class="field">${i===0?`<label>Qty (${ing?ing.unit:'g/ml'})</label>`:''}  <input type="text" inputmode="decimal" value="${r.qty}" placeholder="${ing&&isPerUnit(ing.unit)?'1':'50'}" oninput="updRecipe(${r.id},'qty',this.value)"></div>
       <button class="btn btn-danger btn-sm" style="align-self:end;padding:6px 8px;" onclick="remRecipe(${r.id})">✕</button>
     </div>`;
   }).join('');
@@ -1726,7 +1727,7 @@ function getProductCalcs(p, fillSizeId){
 function goNewProduct(){
   currentProdId=null;recipeRows=[];pkgRecipeRows=[];formulaRows=[];fillSizes=[];pkgItems=[];costs={packaging:[],labour:[],other:[]};
   ['fBatchSize','fLabour'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const fw=document.getElementById('fWaste');if(fw)fw.value='3';
+  const fw=document.getElementById('fWaste');if(fw)fw.value='0';
   const fu=document.getElementById('fBatchUnit');if(fu)fu.value='g';
   renderFormula();
   ['pName','pSku','pPrice','pShipCost','pShipCharge'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1750,7 +1751,7 @@ function loadProduct(id){
   const ffs=document.getElementById('fFillSize');if(ffs)ffs.value=p.formulaFillSize||'';
   const fbs=document.getElementById('fBatchSize');if(fbs)fbs.value=p.formulaBatchSize||'';
   const fbu=document.getElementById('fBatchUnit');if(fbu)fbu.value=p.formulaBatchUnit||'g';
-  const fw=document.getElementById('fWaste');if(fw)fw.value=p.formulaWaste||3;
+  const fw=document.getElementById('fWaste');if(fw)fw.value='0';
   const fl=document.getElementById('fLabour');if(fl)fl.value=p.formulaLabour!==undefined?p.formulaLabour:'';
   costs={packaging:[],labour:[],other:[]};
   for(const[sec,items]of Object.entries(p.costs||{}))for(const item of items)costs[sec].push({id:cid(),name:item.name,amount:item.amount});
@@ -1775,13 +1776,15 @@ async function saveProduct(){
   const formulaFillSize=parseFloat(document.getElementById('fFillSize')?.value)||0;
   const formulaBatchSize=parseFloat(document.getElementById('fBatchSize').value)||0;
   const formulaBatchUnit=document.getElementById('fBatchUnit').value||'g';
-  const formulaWaste=parseFloat(document.getElementById('fWaste').value)||3;
+  const formulaWaste=0;
   const formulaLabour=parseFloat(document.getElementById('fLabour').value)||0;
   const existingProduct=products.find(p=>p.id===currentProdId);
   const data={id:currentProdId||uid(),name,sku:vv('pSku').trim(),batchSize:nv('pBatch')||1,price:nv('pPrice'),platform:vv('pPlatform'),vatRate:nv('pVat'),shipCPU:nv('pShipCost'),shipCharge:nv('pShipCharge'),costs:sc,recipe,pkgRecipe,formula,fillSizes:fillSizesSaved,pkgItems:pkgItemsSaved,formulaBatchSize,formulaBatchUnit,formulaWaste,formulaLabour,formulaFillSize,bundleTiers:existingProduct?.bundleTiers||[]};
+  const saved=await saveProdDB(data);
+  if(!saved){alert('The product did not save. Your entries remain on screen so you can try again.');return;}
   if(currentProdId){const idx=products.findIndex(p=>p.id===currentProdId);if(idx>-1)products[idx]=data;}
   else{currentProdId=data.id;products.push(data);}
-  await saveProdDB(data);updateProdSelector();document.getElementById('prodSelector').value=currentProdId;toast('Product saved ✓');
+  updateProdSelector();document.getElementById('prodSelector').value=currentProdId;toast('Product saved ✓');
 }
 
 
@@ -2577,7 +2580,7 @@ function renderFillSizes(batchUnit,usable,totalIngCost,labour){
     return `<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
       <div style="display:grid;grid-template-columns:150px 1fr 34px;gap:10px;align-items:end;margin-bottom:12px;">
         <div class="field">${i===0?'<label>Fill size ('+batchUnit+')</label>':''}
-          <input type="number" step="1" min="1" value="${fs.size}" placeholder="e.g. 30" oninput="updFillSize(${fs.id},'size',this.value);" style="font-weight:600;"></div>
+          <input type="text" inputmode="decimal" value="${fs.size}" placeholder="e.g. 30" oninput="updFillSize(${fs.id},'size',this.value);" style="font-weight:600;"></div>
         <div class="field">${i===0?'<label>Packaging (from library)</label>':''}
           <select onchange="updFillSize(${fs.id},'pkgId',this.value)">${selPkgOpts}</select></div>
         <button class="btn btn-danger btn-sm" style="align-self:end;padding:6px 8px;" onclick="remFillSize(${fs.id})">✕</button>
