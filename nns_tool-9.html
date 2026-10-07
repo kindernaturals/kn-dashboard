@@ -886,6 +886,14 @@ function exportIngredients(){
   const rows=sortedIngredients().map(i=>[i.name,i.unit,i.notes,i.ukSuppliers?.length||0,cheapestGBPPrice(i,'uk').toFixed(3),i.facSuppliers?.length||0,cheapestGBPPrice(i,'fac').toFixed(3),savingPct(i)?.toFixed(1)||'—',cheaperSource(i)]);
   dlCSV([heads,...rows],'kn_ingredients');
 }
+function mergeIngredientSupplierImport(existing,g,supplierList){
+  if(!existing)return {id:uid(),name:g.name,unit:g.unit,notes:g.notes,ukSuppliers:supplierList(g.ukSuppliers),facSuppliers:supplierList(g.facSuppliers)};
+  if(existing.unit!==g.unit)throw new Error('Base unit differs for '+g.name+'. Nothing was imported.');
+  for(const key of ['ukSuppliers','facSuppliers']){
+    if(g[key].some(s=>(existing[key]||[]).some(e=>e.name.trim().toLowerCase()===s.name.trim().toLowerCase())))throw new Error('Supplier already exists for '+g.name+'. Existing prices were preserved. Nothing was imported.');
+  }
+  return {...existing,ukSuppliers:[...(existing.ukSuppliers||[]),...supplierList(g.ukSuppliers)],facSuppliers:[...(existing.facSuppliers||[]),...supplierList(g.facSuppliers)]};
+}
 let ingredientImportDraft=null,ingredientImportSaving=false;
 function downloadIngredientTemplate(){
   dlCSV([
@@ -906,7 +914,7 @@ async function previewIngredientCSV(input){
   try{
     const rows=parseCSVText(await file.text());
     const headers=(rows.shift()||[]).map(h=>h.trim().toLowerCase().replace(/^\ufeff/,''));
-    const required=['ingredient_name','base_unit','supplier_type','supplier_name','quantity','price'];
+    const required=['ingredient_name','base_unit','supplier_type','supplier_name','quantity','price','currency'];
     const missing=required.filter(h=>!headers.includes(h));
     if(missing.length){alert('Missing CSV columns: '+missing.join(', '));return;}
     const at=(row,key)=>String(row[headers.indexOf(key)]||'').trim();
@@ -932,7 +940,7 @@ async function previewIngredientCSV(input){
       const type=at(row,'supplier_type').toLowerCase();
       const supplierName=at(row,'supplier_name');
       const qty=Number(at(row,'quantity')),price=Number(at(row,'price'));
-      const currency=(at(row,'currency')||'GBP').toUpperCase();
+      const currency=at(row,'currency').toUpperCase();
       if(!['uk','factory'].includes(type)||!supplierName||!Number.isFinite(qty)||qty<=0||
          !Number.isFinite(price)||price<=0||!availCurrencies().includes(currency)){
         group.issues.push('row '+rowNo+': check supplier type, name, quantity, price and currency');
@@ -946,7 +954,14 @@ async function previewIngredientCSV(input){
     const entries=[...groups.values()].map(g=>{
       if(!g.unit)g.issues.push('base unit missing');
       if(!g.ukSuppliers.length&&!g.facSuppliers.length)g.issues.push('no valid supplier price');
-      g.existing=ingredients.some(i=>i.name.trim().toLocaleLowerCase('en-GB')===g.name.trim().toLocaleLowerCase('en-GB'));
+      const existing=ingredients.find(i=>i.name.trim().toLocaleLowerCase('en-GB')===g.name.trim().toLocaleLowerCase('en-GB'));
+      g.existing=!!existing;
+      if(existing&&existing.unit!==g.unit)g.issues.push('existing ingredient uses '+existing.unit+'; match its base unit before importing');
+      if(existing){
+        for(const [key,list] of [['ukSuppliers',g.ukSuppliers],['facSuppliers',g.facSuppliers]]){
+          if(list.some(s=>(existing[key]||[]).some(e=>e.name.trim().toLowerCase()===s.name.trim().toLowerCase())))g.issues.push('supplier already exists; existing supplier prices will not be changed');
+        }
+      }
       return g;
     });
     ingredientImportDraft={entries,errors};
@@ -955,35 +970,37 @@ async function previewIngredientCSV(input){
 }
 function renderIngredientImportPreview(){
   const wrap=document.getElementById('ingredientImportPreview'),draft=ingredientImportDraft;if(!wrap||!draft)return;
-  const valid=draft.entries.filter(g=>!g.existing&&!g.issues.length);
-  const existing=draft.entries.filter(g=>g.existing).length,invalid=draft.entries.filter(g=>!g.existing&&g.issues.length).length;
+  const valid=draft.entries.filter(g=>!g.issues.length);
+  const existing=valid.filter(g=>g.existing).length,invalid=draft.entries.filter(g=>g.issues.length).length;
   wrap.style.display='block';
   const rows=draft.entries.map(g=>{
-    const state=g.existing?'Already in library — skipped':g.issues.length?'Needs fixing: '+g.issues.join('; '):'Ready to import';
-    return `<tr><td>${esc(g.name)}</td><td>${esc(g.unit||'—')}</td><td>${esc(state)}</td></tr>`;
+    const state=g.issues.length?'Needs fixing: '+g.issues.join('; '):g.existing?'Add supplier — preserve existing suppliers':'Ready to import';
+    return `<tr><td>${esc(g.name)}</td><td>${esc(g.unit||'—')}</td><td>${esc([...g.ukSuppliers,...g.facSuppliers].map(s=>s.name+': '+s.tiers.map(t=>t.currency+' '+t.price+' / '+t.qty+' '+g.unit).join(', ')).join('; '))}</td><td>${esc(state)}</td></tr>`;
   }).join('');
   wrap.innerHTML=`<div class="card-head"><span class="card-title">Review ingredient import</span></div>
-    <p style="font-size:13px;">${valid.length} new ready · ${existing} already in library (skipped) · ${invalid+draft.errors.length} need fixing. Existing ingredients will not be changed.</p>
-    <div style="max-height:270px;overflow:auto;"><table class="tbl"><thead><tr><th>Ingredient</th><th>Unit</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p style="font-size:13px;">${valid.length-existing} new ingredients · ${existing} supplier additions · ${invalid+draft.errors.length} need fixing. Existing suppliers, prices and notes will be preserved.</p>
+    <div style="max-height:270px;overflow:auto;"><table class="tbl"><thead><tr><th>Ingredient</th><th>Unit</th><th>Supplier price (original currency)</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${draft.errors.length?`<p style="font-size:12px;color:var(--danger);">${esc(draft.errors.join(' · '))}</p>`:''}
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn btn-purple btn-sm" onclick="saveIngredientImport()" ${valid.length&&!ingredientImportSaving?'':'disabled'}>${ingredientImportSaving?'Saving...':'Import '+valid.length+' new ingredient'+(valid.length===1?'':'s')}</button>
+      <button class="btn btn-purple btn-sm" onclick="saveIngredientImport()" ${valid.length&&!ingredientImportSaving?'':'disabled'}>${ingredientImportSaving?'Saving...':'Import '+valid.length+' ingredient'+(valid.length===1?'':'s')}</button>
       <button class="btn btn-outline btn-sm" onclick="closeIngredientImport()">Cancel</button>
     </div>`;
 }
 async function saveIngredientImport(){
   const draft=ingredientImportDraft;if(!draft)return;
   if(ingredientImportSaving)return;
-  const ready=draft.entries.filter(g=>!g.existing&&!g.issues.length);
+  const ready=draft.entries.filter(g=>!g.issues.length);
   if(!ready.length)return;
   ingredientImportSaving=true;renderIngredientImportPreview();
-  const newIngredients=ready.map(g=>{
+  let newIngredients;
+  try{newIngredients=ready.map(g=>{
     const supplierList=list=>list.map(s=>{
       const tiers=s.tiers.map((t,i)=>({...t,id:stableId(s.name+'tier'+i+t.price+t.qty)}));
       return {id:stableId(s.name+tiers.map(t=>t.price).join('')),name:s.name,tiers};
     });
-    return {id:uid(),name:g.name,unit:g.unit,notes:g.notes,ukSuppliers:supplierList(g.ukSuppliers),facSuppliers:supplierList(g.facSuppliers)};
-  });
+    const existing=ingredients.find(i=>i.name.trim().toLowerCase()===g.name.trim().toLowerCase());
+    return mergeIngredientSupplierImport(existing,g,supplierList);
+  });}catch(e){ingredientImportSaving=false;renderIngredientImportPreview();alert(e.message);return;}
   const payload=newIngredients.map(i=>({
     id:i.id,name:i.name,unit:i.unit,notes:i.notes,
     supplier_uk:i.ukSuppliers,supplier_fac:i.facSuppliers,
@@ -992,7 +1009,11 @@ async function saveIngredientImport(){
   setSS('ing','⟳ Saving '+payload.length+' ingredients...');
   try{
     await sbUp('nns_ingredients',payload);
-    ingredients.push(...newIngredients);renderIngTable();refreshRecipeDropdowns();
+    for(const item of newIngredients){
+      const index=ingredients.findIndex(i=>i.id===item.id);
+      if(index<0)ingredients.push(item);else ingredients[index]=item;
+    }
+    renderIngTable();refreshRecipeDropdowns();
     closeIngredientImport();setSS('ok','✓ '+payload.length+' ingredients imported');
     toast(payload.length+' ingredients imported');
   }catch(e){
