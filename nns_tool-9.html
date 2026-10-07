@@ -597,33 +597,7 @@ async function loadAll(){
     const[ings,prods,setts]=await Promise.all([sbGet('nns_ingredients'),sbGet('nns_products'),sbGet('nns_settings')]);
     let pkgs=[];
     try{pkgs=await sbGet('nns_packaging');}catch(e){console.warn('Packaging table not ready:',e);}
-    function mapSuppliers(raw,fallbackName,fallbackPrice){
-      if(Array.isArray(raw)&&raw.length){
-        return raw.map(s=>{
-          const sid=s.id||stableId((s.name||'')+(s.tiers||[]).map(t=>t.price).join(''));
-          return {
-            id:sid,
-            name:s.name||'',
-            tiers:(s.tiers||[]).map((t,ti)=>({
-              id:t.id||stableId(sid+'tier'+ti+t.price+t.qty),
-              qty:parseFloat(t.qty)||1,
-              price:parseFloat(t.price)||0,
-              currency:t.currency||'GBP'
-            }))
-          };
-        });
-      }
-      if(fallbackPrice>0){
-        const sid=stableId((fallbackName||'')+'fallback'+fallbackPrice);
-        return [{id:sid,name:fallbackName||'',tiers:[{id:stableId(sid+'t0'),qty:1,price:fallbackPrice,currency:'GBP'}]}];
-      }
-      return [];
-    }
-    ingredients=(ings||[]).map(i=>({
-      id:i.id,name:i.name,unit:i.unit||'kg',notes:i.notes||'',
-      ukSuppliers:Array.isArray(i.supplier_uk)&&i.supplier_uk.length?i.supplier_uk:mapSuppliers(null,'',parseFloat(i.price_uk)||0),
-      facSuppliers:Array.isArray(i.supplier_fac)&&i.supplier_fac.length?i.supplier_fac:mapSuppliers(null,'',parseFloat(i.price_fac)||0)
-    }));
+    ingredients=(ings||[]).map(ingredientFromStoredRow);
     products=(prods||[]).map(p=>({...JSON.parse(typeof p.data==='string'?p.data:JSON.stringify(p.data)),id:p.id}));
     const aRow=setts.find(s=>s.key==='auth'),sRow=setts.find(s=>s.key==='settings'),fRow=setts.find(s=>s.key==='fx');
     if(aRow)auth={...auth,...aRow.value};
@@ -862,9 +836,23 @@ async function duplicateIngredient(id){
   }catch(e){setSS('err','⚠ Ingredient copy failed');console.error(e);toast('Could not copy ingredient');}
 }
 
-function ingredientSupplierQuotes(suppliers,unit){
-  return (suppliers||[]).map(s=>'<div style="font-size:12px;margin-top:6px;"><strong>'+esc(s.name||'Unnamed supplier')+'</strong>'+
-    (s.tiers||[]).map(t=>'<br>'+esc(t.currency||'GBP')+' '+Number(t.price).toFixed(2)+' / '+esc(String(t.qty))+' '+esc(unit)).join('')+'</div>').join('');
+function decodeIngredientSuppliers(raw){
+  if(raw===null||raw===undefined||raw==='')return [];
+  let value=raw;
+  for(let n=0;n<2&&typeof value==='string';n++)value=JSON.parse(value);
+  if(!Array.isArray(value))throw new Error('Supplier data could not be read. Existing data has not been changed.');
+  return value;
+}
+function ingredientFromStoredRow(i){
+  const fallback=price=>price>0?[{id:stableId('legacy'+i.id+price),name:'',tiers:[{id:stableId('legacy-tier'+i.id+price),qty:1,price,currency:'GBP'}]}]:[];
+  const uk=decodeIngredientSuppliers(i.supplier_uk),fac=decodeIngredientSuppliers(i.supplier_fac);
+  return {id:i.id,name:i.name,unit:i.unit||'kg',notes:i.notes||'',ukSuppliers:uk.length?uk:fallback(parseFloat(i.price_uk)||0),facSuppliers:fac.length?fac:fallback(parseFloat(i.price_fac)||0)};
+}
+function compactIngredientSupplierLabel(suppliers,unit){
+  return (suppliers||[]).map(s=>{
+    const quotes=(s.tiers||[]).map(t=>esc(t.currency||'GBP')+' '+Number(t.price).toFixed(2)+' / '+esc(String(t.qty))+' '+esc(unit)).join('; ');
+    return (s.name?esc(s.name)+' · ':'')+quotes;
+  }).join('<br>');
 }
 function renderIngTable(){
   const wrap=document.getElementById('ingTable');
@@ -877,13 +865,13 @@ function renderIngTable(){
     const recBadge=src==='factory'?`<span class="badge badge-green">Factory</span>`:src==='uk'?`<span class="badge badge-purple">UK</span>`:`<span class="badge badge-grey">—</span>`;
     return `<tr>
       <td><strong style="font-size:13px;">${esc(ing.name)}</strong>${ing.notes?`<br><span style="font-size:11px;color:#9A80B0;">${esc(ing.notes)}</span>`:''}</td>
-      <td><span style="font-size:11px;color:#9A80B0;">${ukCount} supplier${ukCount!==1?'s':''}</span>${ingredientSupplierQuotes(ing.ukSuppliers,ing.unit)}<br><span class="mono">${ukBest>0?'GBP equivalent: £'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
-      <td><span style="font-size:11px;color:#9A80B0;">${facCount} supplier${facCount!==1?'s':''}</span>${ingredientSupplierQuotes(ing.facSuppliers,ing.unit)}<br><span class="mono">${facBest>0?'GBP equivalent: £'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${compactIngredientSupplierLabel(ing.ukSuppliers,ing.unit)||ukCount+' supplier'+(ukCount!==1?'s':'')}</span><br><span class="mono">${ukBest>0?'£'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${compactIngredientSupplierLabel(ing.facSuppliers,ing.unit)||facCount+' supplier'+(facCount!==1?'s':'')}</span><br><span class="mono">${facBest>0?'£'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
       <td>${saveBadge}</td><td>${recBadge}</td>
       <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="openIngModal('${ing.id}')">Edit</button><button class="btn btn-outline btn-xs" style="margin-left:4px;" onclick="duplicateIngredient('${ing.id}')">⧉ Copy</button><button class="btn btn-danger btn-xs" style="margin-left:4px;" onclick="deleteIng('${ing.id}')">✕</button></td>
     </tr>`;
   }).join('');
-  wrap.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>UK suppliers and prices</th><th>Factory suppliers and prices</th><th>Saving</th><th>Best source</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>Best UK price/${vv('ingUnit')||'unit'}</th><th>Best factory price</th><th>Saving</th><th>Best source</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function exportIngredients(){
   const heads=['Name','Unit','Notes','UK Suppliers (count)','Best UK price/unit £','Factory Suppliers (count)','Best Factory price/unit £','Saving %','Best Source'];
@@ -997,12 +985,16 @@ async function saveIngredientImport(){
   if(!ready.length)return;
   ingredientImportSaving=true;renderIngredientImportPreview();
   let newIngredients;
-  try{newIngredients=ready.map(g=>{
+  try{
+    // Re-read persisted supplier lists so imports preserve changes made since page load.
+    const storedRows=await sbGet('nns_ingredients');
+    const currentIngredients=storedRows.map(ingredientFromStoredRow);
+    newIngredients=ready.map(g=>{
     const supplierList=list=>list.map(s=>{
       const tiers=s.tiers.map((t,i)=>({...t,id:stableId(s.name+'tier'+i+t.price+t.qty)}));
       return {id:stableId(s.name+tiers.map(t=>t.price).join('')),name:s.name,tiers};
     });
-    const existing=ingredients.find(i=>i.name.trim().toLowerCase()===g.name.trim().toLowerCase());
+    const existing=currentIngredients.find(i=>i.name.trim().toLowerCase()===g.name.trim().toLowerCase());
     return mergeIngredientSupplierImport(existing,g,supplierList);
   });}catch(e){ingredientImportSaving=false;renderIngredientImportPreview();alert(e.message);return;}
   const payload=newIngredients.map(i=>({
