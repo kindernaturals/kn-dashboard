@@ -862,6 +862,10 @@ async function duplicateIngredient(id){
   }catch(e){setSS('err','⚠ Ingredient copy failed');console.error(e);toast('Could not copy ingredient');}
 }
 
+function ingredientSupplierQuotes(suppliers,unit){
+  return (suppliers||[]).map(s=>'<div style="font-size:12px;margin-top:6px;"><strong>'+esc(s.name||'Unnamed supplier')+'</strong>'+
+    (s.tiers||[]).map(t=>'<br>'+esc(t.currency||'GBP')+' '+Number(t.price).toFixed(2)+' / '+esc(String(t.qty))+' '+esc(unit)).join('')+'</div>').join('');
+}
 function renderIngTable(){
   const wrap=document.getElementById('ingTable');
   if(!ingredients.length){wrap.innerHTML='<div class="empty-state">No ingredients yet — click <strong>Add ingredient</strong> to start.</div>';return;}
@@ -873,13 +877,13 @@ function renderIngTable(){
     const recBadge=src==='factory'?`<span class="badge badge-green">Factory</span>`:src==='uk'?`<span class="badge badge-purple">UK</span>`:`<span class="badge badge-grey">—</span>`;
     return `<tr>
       <td><strong style="font-size:13px;">${esc(ing.name)}</strong>${ing.notes?`<br><span style="font-size:11px;color:#9A80B0;">${esc(ing.notes)}</span>`:''}</td>
-      <td><span style="font-size:11px;color:#9A80B0;">${ukCount} supplier${ukCount!==1?'s':''}</span><br><span class="mono">${ukBest>0?'£'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
-      <td><span style="font-size:11px;color:#9A80B0;">${facCount} supplier${facCount!==1?'s':''}</span><br><span class="mono">${facBest>0?'£'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${ukCount} supplier${ukCount!==1?'s':''}</span>${ingredientSupplierQuotes(ing.ukSuppliers,ing.unit)}<br><span class="mono">${ukBest>0?'GBP equivalent: £'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
+      <td><span style="font-size:11px;color:#9A80B0;">${facCount} supplier${facCount!==1?'s':''}</span>${ingredientSupplierQuotes(ing.facSuppliers,ing.unit)}<br><span class="mono">${facBest>0?'GBP equivalent: £'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
       <td>${saveBadge}</td><td>${recBadge}</td>
       <td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="openIngModal('${ing.id}')">Edit</button><button class="btn btn-outline btn-xs" style="margin-left:4px;" onclick="duplicateIngredient('${ing.id}')">⧉ Copy</button><button class="btn btn-danger btn-xs" style="margin-left:4px;" onclick="deleteIng('${ing.id}')">✕</button></td>
     </tr>`;
   }).join('');
-  wrap.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>Best UK price/${vv('ingUnit')||'unit'}</th><th>Best factory price</th><th>Saving</th><th>Best source</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML=`<table class="tbl"><thead><tr><th>Ingredient</th><th>UK suppliers and prices</th><th>Factory suppliers and prices</th><th>Saving</th><th>Best source</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function exportIngredients(){
   const heads=['Name','Unit','Notes','UK Suppliers (count)','Best UK price/unit £','Factory Suppliers (count)','Best Factory price/unit £','Saving %','Best Source'];
