@@ -614,6 +614,7 @@ async function loadAll(){
 }
 
 async function saveIngToDB(ing){
+  if(ing.supplierReadError){setSS('err','⚠ Supplier details need inspection');return false;}
   setSS('ing','⟳ Saving...');
   try{
     await sbUp('nns_ingredients',{id:ing.id,name:ing.name,unit:ing.unit,notes:ing.notes||'',supplier_uk:ing.ukSuppliers,supplier_fac:ing.facSuppliers,price_uk:cheapestGBPPrice(ing,'uk'),price_fac:cheapestGBPPrice(ing,'fac')});
@@ -783,6 +784,7 @@ function renderModalSuppliers(){
 
 // INGREDIENT MODAL
 function openIngModal(id){
+  if(id&&ingredients.find(i=>i.id===id)?.supplierReadError){alert('This ingredient has legacy supplier details that need inspection. Editing is blocked to preserve the saved data.');return;}
   editIngId=id||null;
   const ing=id?ingredients.find(x=>x.id===id):null;
   document.getElementById('ingModalTitle').textContent=ing?'Edit ingredient':'Add ingredient';
@@ -838,15 +840,22 @@ async function duplicateIngredient(id){
 
 function decodeIngredientSuppliers(raw){
   if(raw===null||raw===undefined||raw==='')return [];
-  let value=raw;
-  for(let n=0;n<2&&typeof value==='string';n++)value=JSON.parse(value);
-  if(!Array.isArray(value))throw new Error('Supplier data could not be read. Existing data has not been changed.');
-  return value;
+  try{
+    let value=raw;
+    for(let n=0;n<3&&typeof value==='string';n++)value=JSON.parse(value);
+    if(value===null)return [];
+    if(value&&!Array.isArray(value)&&typeof value==='object'&&Array.isArray(value.suppliers))value=value.suppliers;
+    if(value&&!Array.isArray(value)&&typeof value==='object'&&Array.isArray(value.tiers))value=[value];
+    if(!Array.isArray(value)||value.some(s=>!s||typeof s!=='object'||(s.tiers!==undefined&&!Array.isArray(s.tiers))))return null;
+    return value;
+  }catch(e){return null;}
 }
 function ingredientFromStoredRow(i){
   const fallback=price=>price>0?[{id:stableId('legacy'+i.id+price),name:'',tiers:[{id:stableId('legacy-tier'+i.id+price),qty:1,price,currency:'GBP'}]}]:[];
   const uk=decodeIngredientSuppliers(i.supplier_uk),fac=decodeIngredientSuppliers(i.supplier_fac);
-  return {id:i.id,name:i.name,unit:i.unit||'kg',notes:i.notes||'',ukSuppliers:uk.length?uk:fallback(parseFloat(i.price_uk)||0),facSuppliers:fac.length?fac:fallback(parseFloat(i.price_fac)||0)};
+  return {id:i.id,name:i.name,unit:i.unit||'kg',notes:i.notes||'',supplierReadError:uk===null||fac===null,
+    ukSuppliers:uk&&uk.length?uk:fallback(parseFloat(i.price_uk)||0),
+    facSuppliers:fac&&fac.length?fac:fallback(parseFloat(i.price_fac)||0)};
 }
 function compactIngredientSupplierLabel(suppliers,unit){
   return (suppliers||[]).map(s=>{
@@ -864,7 +873,7 @@ function renderIngTable(){
     const saveBadge=sp!==null?(sp>0?`<span class="saving-pill">Save ${sp.toFixed(0)}%</span>`:`<span class="worse-pill">Factory costs more</span>`):'';
     const recBadge=src==='factory'?`<span class="badge badge-green">Factory</span>`:src==='uk'?`<span class="badge badge-purple">UK</span>`:`<span class="badge badge-grey">—</span>`;
     return `<tr>
-      <td><strong style="font-size:13px;">${esc(ing.name)}</strong>${ing.notes?`<br><span style="font-size:11px;color:#9A80B0;">${esc(ing.notes)}</span>`:''}</td>
+      <td><strong style="font-size:13px;">${esc(ing.name)}</strong>${ing.notes?`<br><span style="font-size:11px;color:#9A80B0;">${esc(ing.notes)}</span>`:''}${ing.supplierReadError?'<br><span style="font-size:11px;color:var(--warn);">Supplier details need inspection — editing protected</span>':''}</td>
       <td><span style="font-size:11px;color:#9A80B0;">${compactIngredientSupplierLabel(ing.ukSuppliers,ing.unit)||ukCount+' supplier'+(ukCount!==1?'s':'')}</span><br><span class="mono">${ukBest>0?'£'+ukBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
       <td><span style="font-size:11px;color:#9A80B0;">${compactIngredientSupplierLabel(ing.facSuppliers,ing.unit)||facCount+' supplier'+(facCount!==1?'s':'')}</span><br><span class="mono">${facBest>0?'£'+facBest.toFixed(3)+'/'+esc(ing.unit):'—'}</span></td>
       <td>${saveBadge}</td><td>${recBadge}</td>
@@ -879,6 +888,7 @@ function exportIngredients(){
   dlCSV([heads,...rows],'kn_ingredients');
 }
 function mergeIngredientSupplierImport(existing,g,supplierList){
+  if(existing?.supplierReadError)throw new Error('Supplier details for '+g.name+' need inspection. Existing data was preserved. Nothing was imported.');
   if(!existing)return {id:uid(),name:g.name,unit:g.unit,notes:g.notes,ukSuppliers:supplierList(g.ukSuppliers),facSuppliers:supplierList(g.facSuppliers)};
   if(existing.unit!==g.unit)throw new Error('Base unit differs for '+g.name+'. Nothing was imported.');
   for(const key of ['ukSuppliers','facSuppliers']){
@@ -948,6 +958,7 @@ async function previewIngredientCSV(input){
       if(!g.ukSuppliers.length&&!g.facSuppliers.length)g.issues.push('no valid supplier price');
       const existing=ingredients.find(i=>i.name.trim().toLocaleLowerCase('en-GB')===g.name.trim().toLocaleLowerCase('en-GB'));
       g.existing=!!existing;
+      if(existing?.supplierReadError)g.issues.push('legacy supplier details need inspection; import blocked to preserve data');
       if(existing&&existing.unit!==g.unit)g.issues.push('existing ingredient uses '+existing.unit+'; match its base unit before importing');
       if(existing){
         for(const [key,list] of [['ukSuppliers',g.ukSuppliers],['facSuppliers',g.facSuppliers]]){
