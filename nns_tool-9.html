@@ -267,7 +267,7 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
           <div class="field"><label>Selling price (£) excl. shipping</label><input id="pPrice" type="text" inputmode="decimal" placeholder="5.99" oninput="recalc()"></div>
           <div class="field"><label>Platform</label>
             <select id="pPlatform" onchange="recalc()">
-              <option value="own">Own website</option><option value="etsy">Etsy</option><option value="ebay">eBay</option>
+              <option value="own">Own website</option><option value="etsy">Etsy</option><option value="ebay">eBay</option><option value="tiktok">TikTok Shop</option>
             </select>
           </div>
           <div class="field"><label>VAT (%)</label><input id="pVat" type="text" inputmode="decimal" value="0" oninput="recalc()"></div>
@@ -382,8 +382,28 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
               <option value="">— select fill size —</option>
             </select>
           </div>
+          <div class="field" style="flex:1;min-width:180px;">
+            <label>Pricing channel</label>
+            <select id="pricingChannelSel" onchange="renderPricing();renderBundles()" style="width:100%;padding:8px 12px;font-size:13px;border-radius:7px;border:1px solid var(--border);background:var(--cream);">
+              <option value="own">Own website</option>
+              <option value="etsy">Etsy</option>
+              <option value="ebay">eBay</option>
+              <option value="tiktok">TikTok Shop</option>
+            </select>
+          </div>
         </div>
         <div id="pricingCostSource" style="margin-top:10px;font-size:12px;color:#7A60A0;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:0.75rem;">Channel selling prices</div>
+        <div class="hint" style="margin-bottom:0.75rem;">Keep a different selling price for each channel. Product costs stay shared.</div>
+        <div class="field-grid">
+          <div class="field"><label>Website (£)</label><input id="cpOwn" type="text" inputmode="decimal" placeholder="0.00"></div>
+          <div class="field"><label>Etsy (£)</label><input id="cpEtsy" type="text" inputmode="decimal" placeholder="0.00"></div>
+          <div class="field"><label>eBay (£)</label><input id="cpEbay" type="text" inputmode="decimal" placeholder="0.00"></div>
+          <div class="field"><label>TikTok Shop (£)</label><input id="cpTiktok" type="text" inputmode="decimal" placeholder="0.00"></div>
+        </div>
+        <button class="btn btn-purple btn-sm" onclick="saveChannelPrices()">Save channel prices</button>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:0.75rem;">Shipping scenario</div>
@@ -433,9 +453,11 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
           <div class="field"><label>Etsy (%)</label><input id="sEtsy" type="number" step="0.1" value="6.5"></div>
           <div class="field"><label>eBay (%)</label><input id="sEbay" type="number" step="0.1" value="12.9"></div>
           <div class="field"><label>Own site (%)</label><input id="sOwn" type="number" step="0.1" value="2.9"></div>
+          <div class="field"><label>TikTok Shop (%)</label><input id="sTiktok" type="number" step="0.1" value="0"></div>
           <div class="field"><label>Good margin (%)</label><input id="sGood" type="number" value="40"></div>
           <div class="field"><label>Min margin (%)</label><input id="sMin" type="number" value="20"></div>
         </div>
+        <div class="hint" style="margin-top:0.65rem;">For TikTok Shop, enter the percentage currently charged to your account so the calculator does not assume a fee.</div>
         <button class="btn btn-purple btn-sm" onclick="saveSettings()">Save settings</button>
       </div>
     </div>
@@ -542,7 +564,7 @@ const SB_URL='https://pgedkmfcjvccmusvgaav.supabase.co';
 let SB_KEY=localStorage.getItem('kn_sb_key')||'';
 let SB_H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
 
-let ingredients=[],products=[],settings={etsy:6.5,ebay:12.9,own:2.9,good:40,min:20};
+let ingredients=[],products=[],settings={etsy:6.5,ebay:12.9,own:2.9,tiktok:0,good:40,min:20};
 let auth={owner:'Va2026',va:'Va2026'};
 let fxRates=[{currency:'USD',rate:0.79},{currency:'EUR',rate:0.86},{currency:'CNY',rate:0.11},{currency:'AUD',rate:0.51}];
 let currentUser=null,currentProdId=null,shipMode='both';
@@ -661,10 +683,10 @@ function startApp(){document.getElementById('loginScreen').style.display='none';
 async function savePws(){const op=vv('newOwnerPw').trim(),vp=vv('newVaPw').trim();if(op)auth.owner=op;if(vp)auth.va=vp;await saveSetDB('auth',auth);toast('Passwords updated');}
 
 // SETTINGS
-function applySettingsUI(){['sEtsy','sEbay','sOwn','sGood','sMin'].forEach(id=>{const el=document.getElementById(id);if(el){const k=id.replace('s','').toLowerCase();el.value=settings[k]||settings[id.slice(1).toLowerCase()]||'';}});
-  document.getElementById('sEtsy').value=settings.etsy;document.getElementById('sEbay').value=settings.ebay;document.getElementById('sOwn').value=settings.own;document.getElementById('sGood').value=settings.good;document.getElementById('sMin').value=settings.min;}
-async function saveSettings(){settings={etsy:nv('sEtsy')||6.5,ebay:nv('sEbay')||12.9,own:nv('sOwn')||2.9,good:nv('sGood')||40,min:nv('sMin')||20};await saveSetDB('settings',settings);toast('Settings saved');}
-function pfRate(plat){return(settings[plat]||settings.own)/100;}
+function applySettingsUI(){['sEtsy','sEbay','sOwn','sTiktok','sGood','sMin'].forEach(id=>{const el=document.getElementById(id);if(el){const k=id.replace('s','').toLowerCase();el.value=settings[k]??'';}});
+  document.getElementById('sEtsy').value=settings.etsy??6.5;document.getElementById('sEbay').value=settings.ebay??12.9;document.getElementById('sOwn').value=settings.own??2.9;document.getElementById('sTiktok').value=settings.tiktok??0;document.getElementById('sGood').value=settings.good??40;document.getElementById('sMin').value=settings.min??20;}
+async function saveSettings(){settings={etsy:nv('sEtsy'),ebay:nv('sEbay'),own:nv('sOwn'),tiktok:nv('sTiktok'),good:nv('sGood')||40,min:nv('sMin')||20};await saveSetDB('settings',settings);toast('Settings saved');}
+function pfRate(plat){const v=settings[plat];return (v===undefined||v===null?settings.own||0:v)/100;}
 function goodT(){return settings.good;}function minT(){return settings.min;}
 
 // FX
@@ -1730,14 +1752,16 @@ function getFormulaCpuForFillSize(p, fillSizeId) {
   return { cpu: ingPerUnit+labourPerUnit+pkgPerUnit, ingPerUnit, labourPerUnit, pkgPerUnit, unitsPerBatch:unitsWhole, fillQty, totalIngCost, labour };
 }
 
-function getProductCalcs(p, fillSizeId){
+function getProductCalcs(p, fillSizeId, priceOverride, platformOverride){
+  const price=priceOverride===undefined?(p.price||0):priceOverride;
+  const platform=platformOverride||p.platform||'own';
   // Try formula first
   if(p.formula && p.formula.length && p.formulaBatchSize) {
     const fc = getFormulaCpuForFillSize(p, fillSizeId);
     if(fc) {
       const cpu = fc.cpu;
-      const A=calcScenario(cpu,p.shipCPU||0,p.price||0,0,p.platform||'own',p.vatRate||0);
-      const B=calcScenario(cpu,p.shipCPU||0,p.price||0,p.shipCharge||0,p.platform||'own',p.vatRate||0);
+      const A=calcScenario(cpu,p.shipCPU||0,price,0,platform,p.vatRate||0);
+      const B=calcScenario(cpu,p.shipCPU||0,price,p.shipCharge||0,platform,p.vatRate||0);
       return{cpu,batchCost:fc.totalIngCost+fc.labour,A,B,fromFormula:true,formulaDetail:fc};
     }
   }
@@ -1746,8 +1770,8 @@ function getProductCalcs(p, fillSizeId){
   bc+=pkgBatchCostFromSaved(p);
   for(const sec of Object.values(p.costs||{}))for(const c of sec)bc+=parseFloat(c.amount)||0;
   const cpu=bc/Math.max(1,p.batchSize||1);
-  const A=calcScenario(cpu,p.shipCPU||0,p.price||0,0,p.platform||'own',p.vatRate||0);
-  const B=calcScenario(cpu,p.shipCPU||0,p.price||0,p.shipCharge||0,p.platform||'own',p.vatRate||0);
+  const A=calcScenario(cpu,p.shipCPU||0,price,0,platform,p.vatRate||0);
+  const B=calcScenario(cpu,p.shipCPU||0,price,p.shipCharge||0,platform,p.vatRate||0);
   return{cpu,batchCost:bc,A,B,fromFormula:false};
 }
 
@@ -1807,7 +1831,7 @@ async function saveProduct(){
   const formulaWaste=0;
   const formulaLabour=parseFloat(document.getElementById('fLabour').value)||0;
   const existingProduct=products.find(p=>p.id===currentProdId);
-  const data={id:currentProdId||uid(),name,sku:vv('pSku').trim(),batchSize:nv('pBatch')||1,price:nv('pPrice'),platform:vv('pPlatform'),vatRate:nv('pVat'),shipCPU:nv('pShipCost'),shipCharge:nv('pShipCharge'),costs:sc,recipe,pkgRecipe,formula,fillSizes:fillSizesSaved,pkgItems:pkgItemsSaved,formulaBatchSize,formulaBatchUnit,formulaWaste,formulaLabour,formulaFillSize,bundleTiers:existingProduct?.bundleTiers||[]};
+  const data={id:currentProdId||uid(),name,sku:vv('pSku').trim(),batchSize:nv('pBatch')||1,price:nv('pPrice'),platform:vv('pPlatform'),vatRate:nv('pVat'),shipCPU:nv('pShipCost'),shipCharge:nv('pShipCharge'),costs:sc,recipe,pkgRecipe,formula,fillSizes:fillSizesSaved,pkgItems:pkgItemsSaved,formulaBatchSize,formulaBatchUnit,formulaWaste,formulaLabour,formulaFillSize,bundleTiers:existingProduct?.bundleTiers||[],channelPrices:existingProduct?.channelPrices||{}};
   const saved=await saveProdDB(data);
   if(!saved){alert('The product did not save. Your entries remain on screen so you can try again.');return;}
   if(currentProdId){const idx=products.findIndex(p=>p.id===currentProdId);if(idx>-1)products[idx]=data;}
@@ -2121,8 +2145,31 @@ function onPricingProdChange(){
   } else {
     if(wrap)wrap.style.display='none';
   }
+  loadChannelPricesUI(p);
   renderPricing();
   renderBundles();
+}
+
+function channelPrice(p,channel){
+  const cp=p?.channelPrices||{};
+  if(cp[channel]!==undefined&&cp[channel]!==null&&cp[channel]!=='')return Number(cp[channel])||0;
+  const legacyChannel=p?.platform||'own';
+  return legacyChannel===channel?(Number(p?.price)||0):0;
+}
+function loadChannelPricesUI(p){
+  const map={own:'cpOwn',etsy:'cpEtsy',ebay:'cpEbay',tiktok:'cpTiktok'};
+  Object.entries(map).forEach(([ch,id])=>{const el=document.getElementById(id);if(el)el.value=p?channelPrice(p,ch)||'':'';});
+}
+async function saveChannelPrices(){
+  const id=vv('pricingProdSel');if(!id){alert('Select a product first.');return;}
+  const p=products.find(x=>x.id===id);if(!p)return;
+  const channelPrices={own:nv('cpOwn'),etsy:nv('cpEtsy'),ebay:nv('cpEbay'),tiktok:nv('cpTiktok')};
+  const updated={...p,channelPrices};
+  if((p.platform||'own') in channelPrices)updated.price=channelPrices[p.platform||'own'];
+  const saved=await saveProdDB(updated);
+  if(!saved){alert('Channel prices did not save. Please try again.');return;}
+  const idx=products.findIndex(x=>x.id===id);if(idx>-1)products[idx]=updated;
+  toast('Channel prices saved ✓');renderPricing();renderBundles();
 }
 
 function renderPricing(){
@@ -2130,10 +2177,12 @@ function renderPricing(){
   if(!id){out.innerHTML='<div class="empty-state">Select a product above.</div>';return;}
   const p=products.find(x=>x.id===id);if(!p){out.innerHTML='';return;}
   const fillSizeId=vv('pricingFillSel')||'__new__';
-  const{A,B,cpu,batchCost,fromFormula,formulaDetail}=getProductCalcs(p,fillSizeId);
+  const channel=vv('pricingChannelSel')||'own';
+  const price=channelPrice(p,channel);
+  const{A,B,cpu,batchCost,fromFormula,formulaDetail}=getProductCalcs(p,fillSizeId,price,channel);
   const recCost = fromFormula ? (formulaDetail?formulaDetail.totalIngCost:0) : recipeBatchCostFromSaved(p);
   const manCost = fromFormula ? (formulaDetail?formulaDetail.labour:0) : (batchCost-recCost);
-  const pfLabel={own:'Own site',etsy:'Etsy',ebay:'eBay'}[p.platform]||p.platform;
+  const pfLabel={own:'Own site',etsy:'Etsy',ebay:'eBay',tiktok:'TikTok Shop'}[channel]||channel;
 
   // Show cost source info
   const srcEl=document.getElementById('pricingCostSource');
@@ -2153,9 +2202,9 @@ function renderPricing(){
     return `<div class="cp ${type}"><div class="cp-lbl">${lbl}</div>
       <div class="p-row"><span class="lbl">Product cost/unit</span><span class="val">£${cpu.toFixed(2)}</span></div>
       <div class="p-row"><span class="lbl">Shipping cost/unit</span><span class="val">£${(p.shipCPU||0).toFixed(2)}</span></div>
-      <div class="p-row"><span class="lbl">Your selling price</span><span class="val">£${(p.price||0).toFixed(2)}</span></div>
+      <div class="p-row"><span class="lbl">Your selling price</span><span class="val">£${price.toFixed(2)}</span></div>
       ${isC?`<div class="p-row"><span class="lbl">+ Ship charge</span><span class="val">£${sc.toFixed(2)}</span></div><div class="p-row"><span class="lbl">= Customer pays</span><span class="val" style="font-weight:600;">£${s.totalRev.toFixed(2)}</span></div>`:''}
-      <div class="p-row"><span class="lbl">${pfLabel} fee (${(pfRate(p.platform)*100).toFixed(1)}%)</span><span class="val" style="color:var(--danger);">−£${s.pfAmt.toFixed(2)}</span></div>
+      <div class="p-row"><span class="lbl">${pfLabel} fee (${(pfRate(channel)*100).toFixed(1)}%)</span><span class="val" style="color:var(--danger);">−£${s.pfAmt.toFixed(2)}</span></div>
       <div class="p-row"><span class="lbl">VAT (${p.vatRate||0}%)</span><span class="val" style="color:var(--danger);">−£${s.vatAmt.toFixed(2)}</span></div>
       <div class="p-row p-total"><span class="lbl">Profit/unit</span><span class="val" style="color:${pc};">£${s.profit.toFixed(2)}</span></div>
       <div class="p-row" style="border:none;padding-top:3px;"><span class="lbl">Margin</span><span class="val" style="color:${bc};font-weight:700;">${s.margin.toFixed(1)}%</span></div>
@@ -2199,12 +2248,14 @@ function bundleSummary(b,prod){
   const unitCost=getProductCalcs(prod,vv('pricingFillSel')||'__new__').cpu;
   const shipCost=b.shipCost===''||b.shipCost===undefined?bundleNum(prod.shipCPU):bundleNum(b.shipCost);
   const shipCharge=b.shipCharge===''||b.shipCharge===undefined?bundleNum(prod.shipCharge):bundleNum(b.shipCharge);
+  const channel=vv('pricingChannelSel')||'own';
+  const basePrice=channelPrice(prod,channel);
   const productCost=unitCost*qty,customerPays=price+shipCharge;
-  const fee=customerPays*pfRate(prod.platform||'own');
+  const fee=customerPays*pfRate(channel);
   const vat=price*bundleNum(prod.vatRate)/100;
   const totalCost=productCost+shipCost+fee+vat;
   const profit=customerPays-totalCost,margin=customerPays?100*profit/customerPays:0;
-  const regular=bundleNum(prod.price)*qty,saving=regular-price;
+  const regular=basePrice*qty,saving=regular-price;
   const savingPct=regular?100*saving/regular:0;
   const colour=profit<0?'var(--danger)':margin>=goodT()?'var(--success)':margin>=minT()?'var(--warn)':'var(--danger)';
   return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px 18px;margin-top:12px;">
