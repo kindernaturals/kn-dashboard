@@ -686,7 +686,7 @@ async function savePws(){const op=vv('newOwnerPw').trim(),vp=vv('newVaPw').trim(
 function applySettingsUI(){['sEtsy','sEbay','sOwn','sTiktok','sGood','sMin'].forEach(id=>{const el=document.getElementById(id);if(el){const k=id.replace('s','').toLowerCase();el.value=settings[k]??'';}});
   document.getElementById('sEtsy').value=settings.etsy??6.5;document.getElementById('sEbay').value=settings.ebay??12.9;document.getElementById('sOwn').value=settings.own??2.9;document.getElementById('sTiktok').value=settings.tiktok??0;document.getElementById('sGood').value=settings.good??40;document.getElementById('sMin').value=settings.min??20;}
 async function saveSettings(){settings={etsy:nv('sEtsy'),ebay:nv('sEbay'),own:nv('sOwn'),tiktok:nv('sTiktok'),good:nv('sGood')||40,min:nv('sMin')||20};await saveSetDB('settings',settings);toast('Settings saved');}
-function pfRate(plat){const v=settings[plat];return (v===undefined||v===null?settings.own||0:v)/100;}
+function pfRate(plat){const v=settings[plat];if(v!==undefined&&v!==null)return v/100;if(plat==='tiktok')return 0;return (settings.own||0)/100;}
 function goodT(){return settings.good;}function minT(){return settings.min;}
 
 // FX
