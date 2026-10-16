@@ -156,7 +156,8 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
     <div class="login-logo">Kinder Naturals</div>
     <div class="login-sub">Business Tool</div>
     <div id="loginLoading" style="display:none;"></div>
-    <input type="password" id="pwInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;margin-bottom:0.75rem;">
+    <input type="email" id="emailInput" aria-label="Email address" placeholder="Email address" autocomplete="username" style="width:100%;margin-bottom:0.75rem;">
+    <input type="password" id="pwInput" aria-label="Password" autocomplete="current-password" placeholder="Your Supabase password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;margin-bottom:0.75rem;">
     <div class="login-err" id="loginErr"></div>
     <button class="btn btn-purple" id="loginBtn" style="width:100%;justify-content:center;" onclick="doLogin()">Sign in</button>
     <div class="login-hint">Contact the account owner for access.</div>
@@ -433,12 +434,10 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
     <div id="pane-settings" style="display:none;">
       <div class="section-head"><span class="section-title">Settings</span></div>
       <div class="card">
-        <div class="card-title" style="margin-bottom:1rem;">🔐 Passwords</div>
-        <div class="field-grid">
-          <div class="field"><label>Owner password</label><input type="password" id="newOwnerPw" placeholder="New password"></div>
-          <div class="field"><label>VA password</label><input type="password" id="newVaPw" placeholder="New VA password"></div>
-        </div>
-        <button class="btn btn-purple btn-sm" onclick="savePws()">Save passwords</button>
+        <div class="card-title" style="margin-bottom:1rem;">🔐 Your sign-in password</div>
+        <div class="hint" style="margin-bottom:0.75rem;">Each approved person uses their own Supabase account. Shared owner and VA passwords are no longer used.</div>
+        <div class="field"><label>New password (at least 12 characters)</label><input type="password" id="newOwnerPw" autocomplete="new-password" minlength="12" placeholder="New password"></div>
+        <button class="btn btn-purple btn-sm" onclick="savePws()">Update my password</button>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem;">💱 Currency exchange rates (to £ GBP)</div>
@@ -558,14 +557,16 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
   </div>
 </div>
 
+<script src="./vendor/supabase-2.118.0.js"></script>
 <script>
 const SB_URL='https://pgedkmfcjvccmusvgaav.supabase.co';
-// SB_KEY loaded from localStorage — entered once by owner
-let SB_KEY=localStorage.getItem('kn_sb_key')||'';
-let SB_H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
+// Publishable key identifies this project; access is enforced by Supabase Auth and RLS.
+const SB_KEY="sb_publishable_4Wq2IHmSJuNHJvstQPDPug_QrwCN7cJ";
+const sbClient=supabase.createClient(SB_URL,SB_KEY,{auth:{storageKey:"kn_secure_auth_v1",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+localStorage.removeItem("kn_sb_key");
+let activeAuthId=null;
 
 let ingredients=[],products=[],settings={etsy:6.5,ebay:12.9,own:2.9,tiktok:0,good:40,min:20};
-let auth={owner:'Va2026',va:'Va2026'};
 let fxRates=[{currency:'USD',rate:0.79},{currency:'EUR',rate:0.86},{currency:'CNY',rate:0.11},{currency:'AUD',rate:0.51}];
 let currentUser=null,currentProdId=null,shipMode='both';
 let recipeRows=[],costs={packaging:[],labour:[],other:[]},bundleRows=[];
@@ -593,25 +594,9 @@ function availCurrencies(){return ['GBP',...fxRates.map(f=>f.currency)];}
 // Sync status
 function setSS(state,msg){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status sync-'+state;el.textContent=msg;}
 
-async function sbGet(t){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),5000);
-  try{
-    const r=await fetch(`${SB_URL}/rest/v1/${t}?select=*`,{headers:SB_H,signal:controller.signal});
-    clearTimeout(timer);
-    if(!r.ok)throw new Error(await r.text());
-    return r.json();
-  }catch(e){clearTimeout(timer);throw e;}
-}
-async function sbUp(t,data){
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
-  try{
-    const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data),signal:controller.signal});
-    if(!r.ok)throw new Error(await r.text());
-    return r.json();
-  }finally{clearTimeout(timer);}
-}
-async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_H});if(!r.ok)throw new Error(await r.text());}
+async function sbGet(t){const {data,error}=await sbClient.from(t).select('*');if(error)throw error;return data;}
+async function sbUp(t,data){const {data:rows,error}=await sbClient.from(t).upsert(data).select();if(error)throw error;return rows;}
+async function sbDel(t,id){const {error}=await sbClient.from(t).delete().eq('id',id);if(error)throw error;}
 
 async function loadAll(){
   setSS('ing','⟳ Loading...');
@@ -621,8 +606,7 @@ async function loadAll(){
     try{pkgs=await sbGet('nns_packaging');}catch(e){console.warn('Packaging table not ready:',e);}
     ingredients=(ings||[]).map(ingredientFromStoredRow);
     products=(prods||[]).map(p=>({...JSON.parse(typeof p.data==='string'?p.data:JSON.stringify(p.data)),id:p.id}));
-    const aRow=setts.find(s=>s.key==='auth'),sRow=setts.find(s=>s.key==='settings'),fRow=setts.find(s=>s.key==='fx');
-    if(aRow)auth={...auth,...aRow.value};
+    const sRow=setts.find(s=>s.key==='settings'),fRow=setts.find(s=>s.key==='fx');
     if(sRow)settings={...settings,...sRow.value};
     if(fRow&&fRow.value)fxRates=fRow.value;
     const mixedRow=setts.find(s=>s.key==='mixed_bundles');
@@ -632,7 +616,7 @@ async function loadAll(){
     packagingItems=(pkgs||[]).map(i=>({id:i.id,name:i.name,category:i.category||'other',unit:i.unit||'unit',notes:i.notes||'',ukSuppliers:Array.isArray(i.supplier_uk)?i.supplier_uk:[],facSuppliers:Array.isArray(i.supplier_fac)?i.supplier_fac:[]}));
     applySettingsUI();renderFxRows();
     setSS('ok','✓ Live');
-  }catch(e){setSS('err','⚠ Offline');console.error(e);}
+  }catch(e){setSS('err','⚠ Load failed');console.error(e);throw e;}
 }
 
 async function saveIngToDB(ing){
@@ -651,36 +635,57 @@ async function saveProdDB(prod){
 async function delProdDB(id){try{await sbDel('nns_products',id);setSS('ok','✓ Deleted');}catch(e){setSS('err','⚠ Failed');}}
 async function saveSetDB(key,value){try{await sbUp('nns_settings',{key,value});setSS('ok','✓ Saved');}catch(e){setSS('err','⚠ Failed');}}
 
-// AUTH — completely independent of Supabase
+// Authentication and membership are verified by Supabase; roles are never taken from editable profile metadata.
 function loadAuth(){
-  document.getElementById('loginLoading').style.display='none';
-  document.getElementById('pwInput').style.display='block';
-  document.getElementById('loginBtn').style.display='block';
-  setTimeout(()=>document.getElementById('pwInput').focus(),100);
+ document.getElementById('loginLoading').style.display='none';
+ document.getElementById('pwInput').style.display='block';
+ document.getElementById('loginBtn').style.display='block';
+ document.getElementById('loginBtn').disabled=false;
 }
-function doLogin(){
-  const pw=document.getElementById('pwInput').value.trim();
-  if(pw===auth.owner||pw===auth.va){
-    currentUser=pw===auth.owner?'owner':'va';
-    // Prompt for SB key if not set
-    if(!SB_KEY){
-      const k=prompt('First time setup: paste your Supabase anon key (eyJ...)');
-      if(k&&k.startsWith('eyJ')){
-        SB_KEY=k;
-        localStorage.setItem('kn_sb_key',k);
-        SB_H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
-      }
-    }
-    startApp();
-  }else{
-    document.getElementById('loginErr').textContent='Incorrect password. Try again.';
-  }
+function loginError(message){document.getElementById('loginErr').textContent=message;loadAuth();}
+async function applySession(session){
+ if(!session){
+  if(currentUser){location.reload();return;}
+  document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';loadAuth();return;
+ }
+ if(activeAuthId===session.user.id&&currentUser)return;
+ try{
+  const {data:userData,error:userError}=await sbClient.auth.getUser();
+  if(userError||!userData.user)throw Error('Your session has expired. Please sign in again.');
+  const {data:member,error:memberError}=await sbClient.from('kn_dashboard_members').select('role').eq('user_id',userData.user.id).maybeSingle();
+  if(memberError||!member)throw Error('This account has not been approved for the KN dashboard.');
+  currentUser=member.role;activeAuthId=userData.user.id;
+  await loadAll();
+  document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';
+  document.getElementById('pwInput').value='';
+  document.getElementById('userBadge').textContent=currentUser==='owner'?'👑 Owner':'🛠 VA';
+  showPane('dashboard');
+ }catch(e){currentUser=null;activeAuthId=null;document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';loginError(e.message||'Could not open the dashboard. Please retry.');}
 }
-function doLogout(){currentUser=null;document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';document.getElementById('pwInput').value='';document.getElementById('loginErr').textContent='';loadAuth();}
-// Load auth from Supabase immediately on page open
-loadAuth();
-function startApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';document.getElementById('userBadge').textContent=currentUser==='owner'?'👑 Owner':'🛠 VA';loadAll().then(()=>showPane('dashboard'));}
-async function savePws(){const op=vv('newOwnerPw').trim(),vp=vv('newVaPw').trim();if(op)auth.owner=op;if(vp)auth.va=vp;await saveSetDB('auth',auth);toast('Passwords updated');}
+async function doLogin(){
+ const email=vv('emailInput').trim(),password=vv('pwInput');
+ if(!email||!password){loginError('Enter your email address and password.');return;}
+ document.getElementById('loginBtn').disabled=true;document.getElementById('loginErr').textContent='';
+ try{const {data,error}=await sbClient.auth.signInWithPassword({email,password});if(error)throw error;await applySession(data.session);}
+ catch(e){loginError('Sign-in failed. Check your email and password, then try again.');}
+ finally{document.getElementById('loginBtn').disabled=false;}
+}
+async function doLogout(){await sbClient.auth.signOut({scope:'local'});location.reload();}
+async function initializeAuth(){
+ sbClient.auth.onAuthStateChange((event,session)=>{
+  // Schedule outside the auth callback to avoid locking the SDK during nested queries.
+  if(event==='SIGNED_OUT'&&currentUser){location.reload();return;}
+  if(event==='TOKEN_REFRESHED')return;
+  setTimeout(()=>applySession(session),0);
+ });
+ const {data,error}=await sbClient.auth.getSession();if(error){loginError('Please sign in again.');return;}await applySession(data.session);
+}
+setTimeout(initializeAuth,0);
+async function savePws(){
+ const password=vv('newOwnerPw');if(password.length<12){toast('Use at least 12 characters');return;}
+ const {error}=await sbClient.auth.updateUser({password});if(error){toast('Password update failed: '+error.message);return;}
+ document.getElementById('newOwnerPw').value='';toast('Your sign-in password was updated');
+}
 
 // SETTINGS
 function applySettingsUI(){['sEtsy','sEbay','sOwn','sTiktok','sGood','sMin'].forEach(id=>{const el=document.getElementById(id);if(el){const k=id.replace('s','').toLowerCase();el.value=settings[k]??'';}});
@@ -2678,3 +2683,4 @@ function renderFillSizes(batchUnit,usable,totalIngCost,labour){
 </script>
 </body>
 </html>
+
