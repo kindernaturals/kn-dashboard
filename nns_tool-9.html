@@ -2458,6 +2458,7 @@ function collaboratorAnswer(value){
   const text=collaboratorText(value),url=collaboratorSafeLink(text);
   return url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text)} ↗</a>`:esc(text);
 }
+function collaboratorOptions(values,selected){return values.map(value=>`<option ${value===selected?'selected':''}>${esc(value)}</option>`).join('');}
 async function loadCollaborators(reset=true){
   if(collaboratorsLoading)return;
   collaboratorsLoading=true;
@@ -2483,7 +2484,11 @@ function renderCollaborators(){
       <details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--purple);font-weight:600;">View answers and manage application</summary>
       <dl style="margin:12px 0;">${Object.entries(answers).map(([question,value])=>`<dt style="font-size:11px;font-weight:600;color:#7A60A0;margin-top:10px;">${esc(question)}</dt><dd style="white-space:pre-wrap;overflow-wrap:anywhere;">${collaboratorAnswer(value)||'Not provided'}</dd>`).join('')}</dl>
       <div class="field-grid"><div class="field"><label for="collab-stage-${r.id}">Status</label><select id="collab-stage-${r.id}">${collaboratorStages.map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}</select></div><div class="field"><label for="collab-code-${r.id}">Website coupon code</label><input id="collab-code-${r.id}" maxlength="40" value="${esc(r.coupon_code)}" placeholder="e.g. COURT26"></div></div>
-      <div class="field"><label for="collab-notes-${r.id}">Kam's notes</label><textarea id="collab-notes-${r.id}" rows="3" maxlength="12000">${esc(r.notes)}</textarea></div>
+      <div class="field-grid"><div class="field"><label for="collab-products-${r.id}">Products sent</label><textarea id="collab-products-${r.id}" rows="3" maxlength="4000" placeholder="Product name, size and quantity for each item">${esc(r.products_sent)}</textarea></div><div class="field"><label for="collab-dispatch-${r.id}">Date sent</label><input type="date" id="collab-dispatch-${r.id}" value="${esc(r.dispatch_date)}"></div></div>
+      <div class="field-grid"><div class="field"><label for="collab-published-${r.id}">Content published?</label><select id="collab-published-${r.id}">${collaboratorOptions(['Not yet','Partly','Yes'],r.content_published||'Not yet')}</select></div><div class="field"><label for="collab-beyond-${r.id}">Continuing beyond trial?</label><select id="collab-beyond-${r.id}">${collaboratorOptions(['Not decided','Yes','No'],r.beyond_trial||'Not decided')}</select></div><div class="field"><label for="collab-telegram-${r.id}">Telegram group</label><select id="collab-telegram-${r.id}">${collaboratorOptions(['Not invited','Invited','Joined','Declined','Left'],r.telegram_status||'Not invited')}</select></div></div>
+      <div class="field"><label for="collab-links-${r.id}">Published content links</label><textarea id="collab-links-${r.id}" rows="3" maxlength="12000" placeholder="One live post or video link per line">${esc(r.content_links)}</textarea></div>
+      ${r.content_links?`<div style="font-size:12px;overflow-wrap:anywhere;margin:8px 0;">${r.content_links.split(/\r?\n/).filter(s=>s.trim()).map(s=>collaboratorAnswer(s.trim())).join('<br>')}</div>`:''}
+      <div class="field" style="margin-top:10px;"><label for="collab-notes-${r.id}">Notes</label><textarea id="collab-notes-${r.id}" rows="3" maxlength="12000">${esc(r.notes)}</textarea></div>
       <button id="collab-save-${r.id}" class="btn btn-purple btn-sm" style="margin-top:10px;" onclick="saveCollaborator('${r.id}')">Save progress</button><span id="collab-result-${r.id}" role="status" style="font-size:12px;margin-left:8px;"></span>
       </details></article>`;
   }).join(''):'<div class="card empty-state">'+(collaborators.length?'No applications match these filters.':'No applications received yet. New form submissions will appear here automatically.')+'</div>';
@@ -2492,10 +2497,10 @@ function renderCollaborators(){
 async function saveCollaborator(id){
   const button=document.getElementById('collab-save-'+id),result=document.getElementById('collab-result-'+id);
   if(!button||button.disabled)return;
-  const payload={status:vv('collab-stage-'+id),notes:vv('collab-notes-'+id),coupon_code:vv('collab-code-'+id).trim().toUpperCase()};
+  const payload={status:vv('collab-stage-'+id),notes:vv('collab-notes-'+id),coupon_code:vv('collab-code-'+id).trim().toUpperCase(),products_sent:vv('collab-products-'+id),dispatch_date:vv('collab-dispatch-'+id)||null,content_published:vv('collab-published-'+id),content_links:vv('collab-links-'+id),beyond_trial:vv('collab-beyond-'+id),telegram_status:vv('collab-telegram-'+id)};
   button.disabled=true;result.textContent='Saving...';
   try{
-    const {data,error}=await sbClient.from('kn_collaborator_applications').update(payload).eq('id',id).select('id,status,notes,coupon_code').single();
+    const {data,error}=await sbClient.from('kn_collaborator_applications').update(payload).eq('id',id).select('id,status,notes,coupon_code,products_sent,dispatch_date,content_published,content_links,beyond_trial,telegram_status').single();
     if(error||!data)throw error||new Error('No application was saved');
     const index=collaborators.findIndex(r=>r.id===id);if(index>=0)collaborators[index]={...collaborators[index],...data};
     result.textContent='Saved';document.getElementById('collab-code-'+id).value=data.coupon_code;
