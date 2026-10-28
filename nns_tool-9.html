@@ -179,6 +179,7 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
     <button class="nav-item" id="nav-packaging" onclick="showPane('packaging')">📦 Packaging</button>
     <button class="nav-item" id="nav-products" onclick="showPane('products')">🧴 Products</button>
     <button class="nav-item" id="nav-pricing" onclick="showPane('pricing')">💷 Pricing</button>
+    <button class="nav-item" id="nav-collaborators" onclick="showPane('collaborators')">💜 Collaborators</button>
     <button class="nav-item" id="nav-settings" onclick="showPane('settings')">⚙ Settings</button>
   </nav>
   <div class="main">
@@ -209,6 +210,18 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
         <div id="notesList"></div>
         <div style="font-size:11px;color:#7A60A0;margin-top:10px;">Notes are shared with other dashboard users. Due dates appear here; they do not send notifications.</div>
       </div>
+    </div>
+
+    <div id="pane-collaborators" style="display:none;">
+      <div class="section-head"><span class="section-title">Collaborator applications</span><button class="btn btn-purple btn-sm" onclick="loadCollaborators(true)">Refresh applications</button></div>
+      <div class="hint">Applications arrive from the Kinder Naturals form. Review their interests, TikTok Shop access and content, then save your progress here.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <a class="btn btn-outline btn-sm" href="https://docs.google.com/forms/d/e/1FAIpQLSc6KdADi6qpI-bVCqUExNE5QsP6pwKnv615v6-kVjTwwnkDrA/viewform" target="_blank" rel="noopener noreferrer">Application form ↗</a>
+      </div>
+      <div class="field-grid"><div class="field"><label for="collabSearch">Search applications</label><input id="collabSearch" placeholder="Name, email, location or product" oninput="renderCollaborators()"></div><div class="field"><label for="collabStatus">Status</label><select id="collabStatus" onchange="renderCollaborators()"><option value="">All statuses</option><option>New</option><option>Reviewing</option><option>Contacted</option><option>Trial agreed</option><option>Product sent</option><option>Content due</option><option>Content received</option><option>Continuing</option><option>Closed</option></select></div></div>
+      <p id="collabLoadState" role="status" style="font-size:12px;color:#7A60A0;margin-bottom:12px;"></p>
+      <div id="collabList"></div>
+      <button id="collabMore" class="btn btn-outline btn-sm" style="display:none;" onclick="loadCollaborators(false)">Load more applications</button>
     </div>
 
     <!-- INGREDIENTS -->
@@ -709,7 +722,8 @@ async function saveFx(){await saveSetDB('fx',fxRates);toast('Exchange rates save
 
 // PANES
 function showPane(name){
-  ['dashboard','ingredients','packaging','products','pricing','settings'].forEach(p=>{document.getElementById('pane-'+p).style.display=p===name?'block':'none';document.getElementById('nav-'+p).classList.toggle('active',p===name);});
+  ['dashboard','ingredients','packaging','products','pricing','collaborators','settings'].forEach(p=>{document.getElementById('pane-'+p).style.display=p===name?'block':'none';document.getElementById('nav-'+p).classList.toggle('active',p===name);});
+  if(name==='collaborators')loadCollaborators(true);
   if(name==='dashboard')renderDashboard();
   if(name==='ingredients')renderIngTable();
   if(name==='packaging')renderPkgTable();
@@ -2433,6 +2447,63 @@ async function deleteMixedBundle(id){
   }catch(e){setSS('err','⚠ Remove failed');console.error(e);toast('Could not remove bundle');}
 }
 
+// COLLABORATOR APPLICATIONS: private RLS-protected responses; no public sheet feed.
+let collaborators=[],collaboratorsLoading=false,collaboratorsMore=false;
+const collaboratorStages=['New','Reviewing','Contacted','Trial agreed','Product sent','Content due','Content received','Continuing','Closed'];
+function collaboratorText(value){return Array.isArray(value)?value.join(', '):String(value??'');}
+function collaboratorSafeLink(value){
+  try{const url=new URL(String(value).trim());return url.protocol==='https:'?url.href:null;}catch{return null;}
+}
+function collaboratorAnswer(value){
+  const text=collaboratorText(value),url=collaboratorSafeLink(text);
+  return url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text)} ↗</a>`:esc(text);
+}
+async function loadCollaborators(reset=true){
+  if(collaboratorsLoading)return;
+  collaboratorsLoading=true;
+  const state=document.getElementById('collabLoadState');state.textContent='Loading applications...';
+  try{
+    const offset=reset?0:collaborators.length;
+    const {data,error}=await sbClient.from('kn_collaborator_applications').select('*').order('submitted_at',{ascending:false}).order('id').range(offset,offset+199);
+    if(error)throw error;
+    collaborators=reset?(data||[]):[...collaborators,...(data||[])];collaboratorsMore=(data||[]).length===200;
+    renderCollaborators();state.textContent=collaborators.length+' applications loaded. Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'.';
+  }catch(e){state.textContent='Applications could not be loaded. Check your connection and try Refresh applications.';console.error('Collaborator load failed',e);}
+  finally{collaboratorsLoading=false;}
+}
+function renderCollaborators(){
+  const list=document.getElementById('collabList');if(!list)return;
+  const query=vv('collabSearch').trim().toLowerCase(),stage=vv('collabStatus');
+  const rows=collaborators.filter(r=>(!stage||r.status===stage)&&(!query||[r.full_name,r.email,r.location,r.country,r.us_state,...(r.product_categories||[])].join(' ').toLowerCase().includes(query)));
+  list.innerHTML=rows.length?rows.map(r=>{
+    const answers=r.answers||{},location=[r.location,r.country,r.us_state].filter(Boolean).join(', ');
+    const shop=collaboratorText(answers['Are you enrolled in the TikTok Shop creator/affiliate programme?']);
+    return `<article class="card"><div class="card-head"><div><strong>${esc(r.full_name)}</strong><div style="font-size:12px;color:#7A60A0;">${esc(location)} · ${esc(new Date(r.submitted_at).toLocaleDateString('en-GB'))}</div></div><span class="badge ${r.status==='New'?'badge-purple':'badge-grey'}">${esc(r.status)}</span></div>
+      <p>${esc(r.email)}</p><p style="font-size:12px;margin:5px 0;">${esc((r.product_categories||[]).join(' · '))}</p><p style="font-size:12px;">TikTok Shop affiliate: <strong>${esc(shop||'Not provided')}</strong></p>
+      <details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--purple);font-weight:600;">View answers and manage application</summary>
+      <dl style="margin:12px 0;">${Object.entries(answers).map(([question,value])=>`<dt style="font-size:11px;font-weight:600;color:#7A60A0;margin-top:10px;">${esc(question)}</dt><dd style="white-space:pre-wrap;overflow-wrap:anywhere;">${collaboratorAnswer(value)||'Not provided'}</dd>`).join('')}</dl>
+      <div class="field-grid"><div class="field"><label for="collab-stage-${r.id}">Status</label><select id="collab-stage-${r.id}">${collaboratorStages.map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}</select></div><div class="field"><label for="collab-code-${r.id}">Website coupon code</label><input id="collab-code-${r.id}" maxlength="40" value="${esc(r.coupon_code)}" placeholder="e.g. COURT26"></div></div>
+      <div class="field"><label for="collab-notes-${r.id}">Kam's notes</label><textarea id="collab-notes-${r.id}" rows="3" maxlength="12000">${esc(r.notes)}</textarea></div>
+      <button id="collab-save-${r.id}" class="btn btn-purple btn-sm" style="margin-top:10px;" onclick="saveCollaborator('${r.id}')">Save progress</button><span id="collab-result-${r.id}" role="status" style="font-size:12px;margin-left:8px;"></span>
+      </details></article>`;
+  }).join(''):'<div class="card empty-state">'+(collaborators.length?'No applications match these filters.':'No applications received yet. New form submissions will appear here automatically.')+'</div>';
+  document.getElementById('collabMore').style.display=collaboratorsMore?'inline-flex':'none';
+}
+async function saveCollaborator(id){
+  const button=document.getElementById('collab-save-'+id),result=document.getElementById('collab-result-'+id);
+  if(!button||button.disabled)return;
+  const payload={status:vv('collab-stage-'+id),notes:vv('collab-notes-'+id),coupon_code:vv('collab-code-'+id).trim().toUpperCase()};
+  button.disabled=true;result.textContent='Saving...';
+  try{
+    const {data,error}=await sbClient.from('kn_collaborator_applications').update(payload).eq('id',id).select('id,status,notes,coupon_code').single();
+    if(error||!data)throw error||new Error('No application was saved');
+    const index=collaborators.findIndex(r=>r.id===id);if(index>=0)collaborators[index]={...collaborators[index],...data};
+    result.textContent='Saved';document.getElementById('collab-code-'+id).value=data.coupon_code;
+    const badge=button.closest('article').querySelector('.badge');badge.textContent=data.status;badge.className='badge '+(data.status==='New'?'badge-purple':'badge-grey');
+  }catch(e){result.textContent='Could not save. Your edits are still here; please retry.';console.error('Collaborator save failed',e);}
+  finally{button.disabled=false;}
+}
+
 // DASHBOARD NOTES
 function notesToday(){
   const d=new Date();
@@ -2683,4 +2754,5 @@ function renderFillSizes(batchUnit,usable,totalIngCost,labour){
 </script>
 </body>
 </html>
+
 
