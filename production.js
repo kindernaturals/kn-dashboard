@@ -36,6 +36,7 @@ function home(){
  if(view==='lab')html+=labHtml();
  if(view==='batches')html+=batchesHtml();
  el.innerHTML=html;
+ updateDraftAmounts();
 }
 function formulaRows(x){return (x.ingredients||[]).map(i=>'<tr><td>'+E(i.name)+'</td><td style="text-align:right">'+fmt(Number(i.percent))+'%</td></tr>').join('');}
 function mastersHtml(){
@@ -49,24 +50,49 @@ function labHtml(){
 }
 function editorHtml(){
  if(!draft)return '';
- const lines=(draft.ingredients||[]).map(i=>i.name+' | '+i.percent).join('\n');
+ const q=draft.previewQty??5,unit=draft.unit||'g';
  return '<div class="card" style="margin-top:16px"><div class="card-head"><span class="card-title">'+(draft.kind==='lab'?'Formula experiment':'New approved formula')+'</span><button class="btn btn-outline btn-sm" onclick="productionCancel()">Cancel</button></div>'+
- '<div class="grid-2"><div class="field"><label>Product name</label><input id="productionFormulaName" value="'+E(draft.name)+'" placeholder="Product name"></div>'+
- '<div class="field"><label>Fill size per unit</label><input type="number" id="pFill" value="'+E(draft.fill)+'" min="0.001" step="any"></div></div>'+
- '<div class="field"><label>Measurement unit</label><select id="pUnit"><option value="g" '+(draft.unit==='g'?'selected':'')+'>g</option><option value="ml" '+(draft.unit==='ml'?'selected':'')+'>ml</option></select></div>'+
- '<div class="field"><label>Ingredients and percentages, one per line: Ingredient | Percentage</label><textarea id="pLines" rows="12" placeholder="Load a saved product above, or enter your complete verified formula here.">'+E(lines)+'</textarea></div>'+
- '<p class="hint">Percentages must add to 100%. For an oil or butter blend use weight (g); do not interchange grams and millilitres without a validated density conversion. Save only a verified formula.</p>'+
+ '<div class="field"><label for="productionFormulaName">Product name</label><input id="productionFormulaName" value="'+E(draft.name)+'" oninput="productionDraftField(\'name\',this.value)"></div>'+
+ '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:16px"><div class="field" style="flex:1;min-width:150px"><label for="pQuantity">Quantity of units</label><input type="number" id="pQuantity" value="'+E(q)+'" min="1" max="100000" step="1" oninput="productionDraftField(\'previewQty\',this.value)"></div>'+
+ '<div class="field" style="flex:1;min-width:150px"><label for="pFill">Size of each unit</label><input type="number" id="pFill" value="'+E(draft.fill)+'" min="0.001" step="any" placeholder="Enter size" oninput="productionDraftField(\'fill\',this.value)"></div>'+
+ '<div class="field" style="min-width:100px"><label for="pUnit">Unit</label><select id="pUnit" onchange="productionDraftField(\'unit\',this.value)"><option value="g" '+(unit==='g'?'selected':'')+'>g</option><option value="ml" '+(unit==='ml'?'selected':'')+'>ml</option></select></div></div>'+
+ '<div class="hint" id="productionSizeSummary" aria-live="polite"></div>'+
+ '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ingredient</th><th style="width:120px">Formula %</th><th style="width:160px">Amount to weigh (<span class="production-unit">'+E(unit)+'</span>)</th><th style="width:42px"></th></tr></thead><tbody>'+
+ (draft.ingredients||[]).map((i,j)=>'<tr><td><input aria-label="Ingredient '+(j+1)+'" style="width:100%;min-width:170px;padding:9px;border:1px solid var(--border);border-radius:7px;font:inherit;background:#fff;color:var(--bark)" value="'+E(i.name)+'" oninput="productionIngredientField('+j+',\'name\',this.value)"></td><td><input aria-label="Percentage '+(j+1)+'" type="number" min="0" max="100" step="any" style="width:90px;padding:9px;border:1px solid var(--border);border-radius:7px;font:inherit;background:#fff;color:var(--bark);text-align:right" value="'+E(i.percent)+'" oninput="productionIngredientField('+j+',\'percent\',this.value)"></td><td><strong id="productionAmount'+j+'">—</strong></td><td><button class="btn btn-danger btn-xs" aria-label="Remove ingredient '+(j+1)+'" onclick="productionRemoveIngredient('+j+')">×</button></td></tr>').join('')+
+ '</tbody><tfoot><tr><th>Total</th><th id="productionPercentTotal"></th><th id="productionAmountTotal"></th><th></th></tr></tfoot></table></div>'+
+ '<button class="btn btn-outline btn-sm" style="margin:12px 0" onclick="productionAddIngredient()">+ Add ingredient</button><p id="productionFormulaValidation" role="status" style="font-size:13px;margin-bottom:12px"></p>'+
+ '<p style="font-size:12px;margin-bottom:12px">Edit the percentages to develop the formula. Amounts are calculated for the quantity above. Changing quantity does not change the recipe. Use g for weight or ml for volume; changing the unit is not a density conversion.</p>'+
  '<button class="btn btn-purple" onclick="productionSaveFormula()">Save '+(draft.kind==='lab'?'experiment':'approved formula')+'</button></div>';
 }
+function updateDraftAmounts(){
+ if(!draft||!by('productionSizeSummary'))return;
+ const fill=Number(draft.fill),q=Number(draft.previewQty??5),unit=draft.unit||'g';
+ const valid=Number.isFinite(fill)&&fill>0&&Number.isSafeInteger(q)&&q>=1&&q<=100000;
+ const total=(draft.ingredients||[]).reduce((sum,i)=>sum+(Number(i.percent)||0),0);
+ by('productionSizeSummary').textContent=valid?q+' × '+fmt(fill)+' '+unit+' = '+fmt(q*fill)+' '+unit+' total':'Enter a positive size and a whole-number quantity to calculate amounts.';
+ document.querySelectorAll('.production-unit').forEach(e=>e.textContent=unit);
+ (draft.ingredients||[]).forEach((i,j)=>{const el=by('productionAmount'+j);if(el)el.textContent=valid&&Number.isFinite(Number(i.percent))?fmt(q*fill*Number(i.percent)/100)+' '+unit:'—';});
+ by('productionPercentTotal').textContent=fmt(total)+'%';
+ by('productionAmountTotal').textContent=valid?fmt(q*fill*total/100)+' '+unit:'—';
+ const complete=(draft.ingredients||[]).length>0&&Math.abs(total-100)<0.00001;
+ by('productionFormulaValidation').textContent=complete?'Formula totals 100%.':'Formula totals '+fmt(total)+'%. Adjust it to 100% before saving.';
+ by('productionFormulaValidation').style.color=complete?'var(--success)':'var(--danger)';
+}
+window.productionDraftField=(key,value)=>{if(draft){draft[key]=value;updateDraftAmounts();}};
+window.productionIngredientField=(j,key,value)=>{if(draft?.ingredients[j]){draft.ingredients[j][key]=value;updateDraftAmounts();}};
+window.productionAddIngredient=()=>{if(draft){draft.ingredients.push({name:'',percent:''});home();}};
+window.productionRemoveIngredient=j=>{if(draft){draft.ingredients.splice(j,1);home();}};
 function parseInput(){
- const name=by('productionFormulaName').value.trim(),fill=Number(by('pFill').value),unit=by('pUnit').value;
- if(!name||!(fill>0)||!Number.isFinite(fill))throw Error('Enter a product name and a positive fill size.');
- const lines=by('pLines').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
- const ing=lines.map(s=>{const pos=s.lastIndexOf('|');if(pos<1)throw Error('Use Ingredient | Percentage on every line.');return {name:s.slice(0,pos).trim(),percent:Number(s.slice(pos+1).trim())};});
- if(!ing.length||ing.some(i=>!i.name||!Number.isFinite(i.percent)||i.percent<=0))throw Error('Provide valid ingredients and positive percentages.');
+ const name=String(draft.name||'').trim(),fill=Number(draft.fill),unit=draft.unit;
+ const previewQty=Number(draft.previewQty??5);
+ if(!name||!(fill>0)||!Number.isFinite(fill))throw Error('Enter a product name and a positive size per unit.');
+ if(!Number.isSafeInteger(previewQty)||previewQty<1||previewQty>100000)throw Error('Enter a whole-number quantity between 1 and 100,000.');
+ if(!['g','ml'].includes(unit))throw Error('Select g or ml.');
+ const ing=(draft.ingredients||[]).map(i=>({name:String(i.name||'').trim(),percent:Number(i.percent)}));
+ if(!ing.length||ing.some(i=>!i.name||!Number.isFinite(i.percent)||i.percent<=0))throw Error('Provide ingredient names and positive percentages.');
  const total=ing.reduce((a,b)=>a+b.percent,0);
  if(Math.abs(total-100)>0.00001)throw Error('Percentages add to '+fmt(total)+'%, not 100%.');
- return {name,fill,unit,ingredients:ing};
+ return {name,fill,unit,ingredients:ing,previewQty};
 }
 window.productionSelect=type=>{view=type;draft=null;home();};
 window.productionNew=kind=>{view=kind==='master'?'masters':'lab';draft={kind,name:'',fill:200,unit:'g',ingredients:[]};home();};
@@ -124,9 +150,9 @@ function batchesHtml(){
   s+='<div class="field"><label>Approved product</label><select id="batchFormula" onchange="productionChoose(this.value)">'+chooseOptions()+'</select></div>'+
   '<div class="grid-2"><div class="field"><label>Quantity of units</label><input id="batchQty" type="number" min="1" step="1" value="'+qty+'" onchange="productionQty(this.value)"></div><div class="field"><label>Batch number (editable)</label><input id="batchNo" value="'+E(batchId||defaultBatch())+'" oninput="productionBatchNo(this.value)"></div></div>'+
   '<p><strong>Total: '+fmt(m.fill*qty)+' '+E(m.unit)+'</strong> for '+qty+' × '+fmt(m.fill)+E(m.unit)+' units</p>'+
-  '<table class="tbl"><thead><tr><th>Ingredient</th><th>%</th><th>Required ('+E(m.unit)+')</th></tr></thead><tbody>'+
+  '<table class="tbl"><thead><tr><th>Ingredient</th><th>%</th><th>Amount to weigh ('+E(m.unit)+')</th></tr></thead><tbody>'+
   calculation(m).map(i=>'<tr><td>'+E(i.name)+'</td><td>'+fmt(i.percent)+'%</td><td><strong>'+fmt(i.amount)+'</strong></td></tr>').join('')+
-  '</tbody></table><p class="hint">All quantities derive from a frozen copy of the approved version. No pricing or stock movement occurs.</p>'+
+  '</tbody><tfoot><tr><th>Total</th><th>'+fmt(m.ingredients.reduce((sum,i)=>sum+Number(i.percent),0))+'%</th><th>'+fmt(calculation(m).reduce((sum,i)=>sum+i.amount,0))+' '+E(m.unit)+'</th></tr></tfoot></table><p class="hint">All quantities derive from a frozen copy of the approved version. No pricing or stock movement occurs.</p>'+
   '<button class="btn btn-purple" onclick="productionCreateBatch()">Save batch worksheet</button>';
  }
  s+='</div><div class="card" style="margin-top:16px"><div class="card-head"><span class="card-title">Production history</span></div>';
@@ -150,7 +176,7 @@ window.productionViewBatch=id=>{
  const b=data.batches.find(x=>x.id===id),el=by('batchDetail');if(!b||!el)return;
  el.innerHTML='<div class="card" id="prodPrint"><div class="card-head"><span class="card-title">Batch '+E(b.number)+'</span><button class="btn btn-outline btn-sm" onclick="window.print()">Print</button></div>'+
  '<p><strong>'+E(b.name)+'</strong> · Formula v'+b.version+' · '+b.qty+' × '+fmt(b.fill)+E(b.unit)+' · '+E(b.createdAt.slice(0,10))+'</p>'+
- '<table class="tbl"><thead><tr><th>Weighed</th><th>Ingredient</th><th>Required</th><th>Ingredient lot / supplier batch</th></tr></thead><tbody>'+
+ '<table class="tbl"><thead><tr><th>Weighed</th><th>Ingredient</th><th>Amount to weigh</th><th>Ingredient lot / supplier batch</th></tr></thead><tbody>'+
  b.ingredients.map((i,j)=>'<tr><td><input type="checkbox" '+(i.checked?'checked':'')+' onchange="productionCheck(\''+b.id+'\','+j+',this.checked)"></td><td>'+E(i.name)+'</td><td>'+fmt(i.amount)+' '+E(b.unit)+'</td><td><input style="max-width:190px" value="'+E(i.lot||'')+'" onchange="productionLot(\''+b.id+'\','+j+',this.value)"></td></tr>').join('')+'</tbody></table>'+
  '<div class="grid-2"><div class="field"><label>Actual units filled</label><input type="number" min="0" step="1" id="actualBatch" value="'+(b.actual??'')+'" placeholder="Units filled"></div>'+
  '<div class="field"><label>Production status</label><select id="statusBatch">'+['Planned','In progress','Completed','Cancelled'].map(s=>'<option '+(s===b.status?'selected':'')+'>'+s+'</option>').join('')+'</select></div></div>'+
