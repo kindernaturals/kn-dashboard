@@ -39,27 +39,27 @@ function home(){
 }
 function formulaRows(x){return (x.ingredients||[]).map(i=>'<tr><td>'+E(i.name)+'</td><td style="text-align:right">'+fmt(Number(i.percent))+'%</td></tr>').join('');}
 function mastersHtml(){
- return '<div class="card"><div class="card-head"><span class="card-title">Approved master formulas</span><button class="btn btn-purple btn-sm" onclick="productionNew(\'master\')">+ New approved formula</button></div>'+
+ return productImportHtml()+'<div class="card"><div class="card-head"><span class="card-title">Approved master formulas</span><button class="btn btn-purple btn-sm" onclick="productionNew(\'master\')">+ New approved formula</button></div>'+
  (data.masters.length?'<table class="tbl"><thead><tr><th>Product</th><th>Fill</th><th>Version</th><th>Approved</th><th></th></tr></thead><tbody>'+
  [...data.masters].reverse().map(m=>'<tr><td>'+E(m.name)+'</td><td>'+fmt(m.fill)+' '+E(m.unit)+'</td><td>v'+m.version+'</td><td>'+E(m.approvedAt?.slice(0,10)||'')+'</td><td><button class="btn btn-outline btn-sm" onclick="productionInspect(\''+m.id+'\')">View</button> <button class="btn btn-outline btn-sm" onclick="productionCopyLab(\''+m.id+'\')">Revise in lab</button></td></tr>').join('')+'</tbody></table>':'<p class="hint">No master formulas yet. Add an approved recipe to begin.</p>')+'</div>'+editorHtml();
 }
 function labHtml(){
- return '<div class="card"><div class="card-head"><span class="card-title">Formula Lab</span><button class="btn btn-purple btn-sm" onclick="productionNew(\'lab\')">+ New experiment</button></div>'+
+ return productImportHtml()+'<div class="card"><div class="card-head"><span class="card-title">Formula Lab</span><button class="btn btn-purple btn-sm" onclick="productionNew(\'lab\')">+ New experiment</button></div>'+
  (data.labs.length?'<table class="tbl"><thead><tr><th>Experiment</th><th>Size</th><th>Status</th><th></th></tr></thead><tbody>'+data.labs.map(l=>'<tr><td>'+E(l.name)+'</td><td>'+fmt(l.fill)+' '+E(l.unit)+'</td><td>Test / unapproved</td><td><button class="btn btn-outline btn-sm" onclick="productionEditLab(\''+l.id+'\')">Edit</button> <button class="btn btn-outline btn-sm" onclick="productionApprove(\''+l.id+'\')">Approve as master</button></td></tr>').join('')+'</tbody></table>':'<p class="hint">Develop a formula here without changing an approved recipe.</p>')+'</div>'+editorHtml();
 }
 function editorHtml(){
  if(!draft)return '';
  const lines=(draft.ingredients||[]).map(i=>i.name+' | '+i.percent).join('\n');
  return '<div class="card" style="margin-top:16px"><div class="card-head"><span class="card-title">'+(draft.kind==='lab'?'Formula experiment':'New approved formula')+'</span><button class="btn btn-outline btn-sm" onclick="productionCancel()">Cancel</button></div>'+
- '<div class="grid-2"><div class="field"><label>Product name</label><input id="pName" value="'+E(draft.name)+'" placeholder="Rose Body Butter"></div>'+
+ '<div class="grid-2"><div class="field"><label>Product name</label><input id="productionFormulaName" value="'+E(draft.name)+'" placeholder="Product name"></div>'+
  '<div class="field"><label>Fill size per unit</label><input type="number" id="pFill" value="'+E(draft.fill)+'" min="0.001" step="any"></div></div>'+
  '<div class="field"><label>Measurement unit</label><select id="pUnit"><option value="g" '+(draft.unit==='g'?'selected':'')+'>g</option><option value="ml" '+(draft.unit==='ml'?'selected':'')+'>ml</option></select></div>'+
- '<div class="field"><label>Ingredients and percentages, one per line: Ingredient | Percentage</label><textarea id="pLines" rows="8" placeholder="Shea butter | 50\nMango butter | 30">'+E(lines)+'</textarea></div>'+
+ '<div class="field"><label>Ingredients and percentages, one per line: Ingredient | Percentage</label><textarea id="pLines" rows="12" placeholder="Load a saved product above, or enter your complete verified formula here.">'+E(lines)+'</textarea></div>'+
  '<p class="hint">Percentages must add to 100%. For an oil or butter blend use weight (g); do not interchange grams and millilitres without a validated density conversion. Save only a verified formula.</p>'+
  '<button class="btn btn-purple" onclick="productionSaveFormula()">Save '+(draft.kind==='lab'?'experiment':'approved formula')+'</button></div>';
 }
 function parseInput(){
- const name=by('pName').value.trim(),fill=Number(by('pFill').value),unit=by('pUnit').value;
+ const name=by('productionFormulaName').value.trim(),fill=Number(by('pFill').value),unit=by('pUnit').value;
  if(!name||!(fill>0)||!Number.isFinite(fill))throw Error('Enter a product name and a positive fill size.');
  const lines=by('pLines').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
  const ing=lines.map(s=>{const pos=s.lastIndexOf('|');if(pos<1)throw Error('Use Ingredient | Percentage on every line.');return {name:s.slice(0,pos).trim(),percent:Number(s.slice(pos+1).trim())};});
@@ -99,11 +99,26 @@ window.productionInspect=id=>{
  draft=null;home();
  const el=by('prodMessage');el.innerHTML='<div class="card"><strong>'+E(m.name)+' v'+m.version+'</strong> ('+fmt(m.fill)+' '+E(m.unit)+')<table class="tbl"><tbody>'+formulaRows(m)+'</tbody></table><p class="hint">Approved '+E(m.approvedAt||'')+'</p></div>';
 };
+function productImportHtml(){
+ const list=[...products].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en-GB',{numeric:true,sensitivity:'base'}));
+ return '<div class="card" style="margin-bottom:16px"><div class="card-head"><span class="card-title">Use a saved product formula</span></div><div class="field"><label for="productionProductSource">Saved products ('+list.length+')</label><select id="productionProductSource"><option value="">Select a product to review</option>'+list.map(p=>'<option value="'+E(p.id)+'">'+E(p.name||'Unnamed')+((p.formula||[]).length?'':' · no percentage formula saved')+'</option>').join('')+'</select></div><button class="btn btn-purple btn-sm" onclick="productionImportProduct()">Load complete formula for review</button><p style="font-size:12px;margin-top:8px">Copies every saved formula ingredient into the Formula Lab. Review and approve it before creating a batch. Product formulas and prices stay unchanged.</p></div>';
+}
+window.productionImportProduct=()=>{
+ const p=products.find(x=>x.id===by('productionProductSource')?.value);
+ if(!p){msg('Select a saved product first.');return;}
+ if(!Array.isArray(p.formula)||!p.formula.length){msg('This product has no saved percentage formula. Add and verify its formula in the lab; quantities cannot be guessed.');return;}
+ const missing=p.formula.filter(r=>!ingredients.some(i=>i.id===r.ingId));
+ if(missing.length){msg('The saved formula references '+missing.length+' missing ingredient(s). Restore those ingredient records before importing; no rows have been omitted.');return;}
+ const unit=p.formulaBatchUnit==='kg'?'g':p.formulaBatchUnit==='L'?'ml':p.formulaBatchUnit;
+ if(!['g','ml'].includes(unit)){msg('Confirm the formula measurement unit before importing.');return;}
+ draft={kind:'lab',name:p.name,fill:Number(p.formulaFillSize)||'',unit,sourceProductId:p.id,ingredients:p.formula.map(r=>({name:ingredients.find(i=>i.id===r.ingId).name,percent:Number(r.pct)}))};
+ view='lab';home();msg('Loaded all '+draft.ingredients.length+' saved ingredients. Check the percentages, measurement unit and fill size, then save the experiment and approve it when verified.');
+};
 function chooseOptions(){return activeMasters().map(m=>'<option value="'+E(m.id)+'" '+(chosen===m.id?'selected':'')+'>'+E(m.name)+' · '+fmt(m.fill)+E(m.unit)+' · v'+m.version+'</option>').join('');}
 function calculation(m){return m.ingredients.map(i=>({name:i.name,percent:i.percent,amount:m.fill*qty*i.percent/100}));}
 function batchesHtml(){
  const m=activeMasters().find(x=>x.id===chosen)||activeMasters()[0];if(m)chosen=m.id;
- let s='<div class="card"><div class="card-head"><span class="card-title">Create production batch</span></div>';
+ let s=productImportHtml()+'<div class="card"><div class="card-head"><span class="card-title">Create production batch</span></div>';
  if(!m)s+='<p class="hint">Add an approved master formula first, then return here to generate a production worksheet.</p><button class="btn btn-purple" onclick="productionNew(\'master\')">+ Add master formula</button>';
  else{
   s+='<div class="field"><label>Approved product</label><select id="batchFormula" onchange="productionChoose(this.value)">'+chooseOptions()+'</select></div>'+
