@@ -147,6 +147,13 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
   :is(#ingTable,#pkgTable) .tbl td:last-child .btn{min-height:40px;margin-left:0!important;justify-content:center;}
   :is(#ingTable,#pkgTable) .tbl td:last-child .btn-danger{margin-left:auto!important;}
 }
+
+/* Production-only layout and printable batch worksheet */
+#pane-production .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#pane-production textarea{width:100%;min-height:90px;padding:10px;border:1px solid var(--border);border-radius:7px;font:inherit;background:#fff;color:var(--bark)}
+#pane-production select,#pane-production input{max-width:100%}
+@media(max-width:600px){#pane-production .grid-2{grid-template-columns:1fr}}
+@media print{body *{visibility:hidden!important}#prodPrint,#prodPrint *{visibility:visible!important}#prodPrint{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;background:white}#prodPrint button{display:none!important}}
 </style>
 </head>
 <body>
