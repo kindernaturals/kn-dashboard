@@ -178,6 +178,7 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
     <button class="nav-item" id="nav-ingredients" onclick="showPane('ingredients')">🧪 Ingredients</button>
     <button class="nav-item" id="nav-packaging" onclick="showPane('packaging')">📦 Packaging</button>
     <button class="nav-item" id="nav-products" onclick="showPane('products')">🧴 Products</button>
+    <button class="nav-item" id="nav-production" onclick="showPane('production')">🧴 Production</button>
     <button class="nav-item" id="nav-pricing" onclick="showPane('pricing')">💷 Pricing</button>
     <button class="nav-item" id="nav-collaborators" onclick="showPane('collaborators')">💜 Collaborators</button>
     <button class="nav-item" id="nav-settings" onclick="showPane('settings')">⚙ Settings</button>
@@ -442,6 +443,9 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
         <div id="mixedBundleEditor"></div>
       </div>
     </div>
+
+    <!-- PRODUCTION: independent of product pricing and records -->
+    <div id="pane-production" style="display:none;"><div id="prodContent"></div></div>
 
     <!-- SETTINGS -->
     <div id="pane-settings" style="display:none;">
@@ -722,8 +726,9 @@ async function saveFx(){await saveSetDB('fx',fxRates);toast('Exchange rates save
 
 // PANES
 function showPane(name){
-  ['dashboard','ingredients','packaging','products','pricing','collaborators','settings'].forEach(p=>{document.getElementById('pane-'+p).style.display=p===name?'block':'none';document.getElementById('nav-'+p).classList.toggle('active',p===name);});
+  ['dashboard','ingredients','packaging','products','pricing','production','collaborators','settings'].forEach(p=>{document.getElementById('pane-'+p).style.display=p===name?'block':'none';document.getElementById('nav-'+p).classList.toggle('active',p===name);});
   if(name==='collaborators')loadCollaborators(true);
+  if(name==='production')renderProduction();
   if(name==='dashboard')renderDashboard();
   if(name==='ingredients')renderIngTable();
   if(name==='packaging')renderPkgTable();
@@ -2757,6 +2762,7 @@ function renderFillSizes(batchUnit,usable,totalIngCost,labour){
   }).join('');
 }
 </script>
+<script src="./production.js"></script>
 </body>
 </html>
 
