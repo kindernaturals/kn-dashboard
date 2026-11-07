@@ -37,6 +37,9 @@ function sources(){
  const lines=p.formula.map(r=>({name:ingredients.find(i=>String(i.id)===String(r.ingId))?.name||'Missing ingredient',percent:num(r.pct)}));
  items.push({id:'product:'+p.id,name:p.name||'Unnamed product',fill:num(p.formulaFillSize),unit,ingredients:lines,valid:!missing.length&&['g','ml'].includes(unit)&&num(p.formulaFillSize)>0,sourceType:'product',version:'Original product formula'});
  }
+ for(const l of store.labs){
+  items.push({id:'saved:'+l.id,name:l.name,fill:num(l.fill),unit:l.unit,ingredients:(l.ingredients||[]).map(i=>({...i})),valid:num(l.fill)>0&&['g','ml'].includes(l.unit)&&Array.isArray(l.ingredients)&&l.ingredients.length>0,sourceType:'saved',version:'Saved formula'});
+ }
  for(const m of store.masters){
  if(store.masters.some(x=>x.name.toLowerCase()===m.name.toLowerCase()&&x.version>m.version))continue;
  items.push({id:'master:'+m.id,name:m.name,fill:num(m.fill),unit:m.unit,ingredients:m.ingredients.map(i=>({...i})),valid:true,sourceType:'master',version:m.version});
@@ -84,7 +87,7 @@ function render(){
  '<div class="card"><div class="card-head"><span class="card-title">'+(mode==='original'?'Create batch from original formula':'Create batch from editable copy')+'</span></div>'+
  '<div class="field"><label for="simpleSource">Product formula</label><select id="simpleSource" onchange="simpleSourceChange(this.value)"><option value="">Select a formula</option>'+
  list.map(x=>'<option value="'+esc(x.id)+'" '+(sourceId===x.id?'selected':'')+'>'+esc(x.name)+' ('+esc(String(x.version))+')</option>').join('')+'</select></div>';
- if(!s)html+='<p class="hint">No saved product formulas are available. Add the original formula in Products first; it will appear here automatically.</p>';
+ if(!s)html+='<p class="hint">No saved formulas are available. Save a formula in Products first; it will appear here automatically.</p>';
  else{
  html+='<div class="grid-2"><div class="field"><label for="simpleBatchNo">Batch number (automatically filled, editable)</label><input id="simpleBatchNo" value="'+esc(batchNo)+'" oninput="simpleBatchChange(this.value)"></div>'+
  '<div class="field"><label for="simpleQty">Number of units to make</label><input id="simpleQty" type="number" min="1" max="100000" step="1" value="'+qty+'" oninput="simpleQtyChange(this.value)"></div></div>'+
