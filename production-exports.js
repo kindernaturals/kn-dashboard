@@ -7,7 +7,7 @@ const fmt=n=>N(n).toLocaleString('en-GB',{maximumFractionDigits:4});
 const slug=s=>String(s||'formula').replace(/[^a-z0-9_-]/gi,'-').slice(0,55);
 function normal(item,kind,qty){
  const units=kind==='batch'?N(item.qty):Math.max(1,Number(qty)||1),fill=N(item.fill);
- return {kind,name:item.name||'Formula',number:kind==='batch'?item.number:'',date:(kind==='batch'?item.createdAt:Date.now())||Date.now(),version:item.version||'Experimental',unit:item.unit||'g',units,fill,total:fill*units,status:item.status|| (kind==='master'?'Approved':'Experimental'),actual:item.actual,notes:item.notes||'',list:(item.ingredients||[]).map(x=>({name:x.name,percent:N(x.percent),amount:kind==='batch'?N(x.amount):fill*units*N(x.percent)/100,lot:x.lot||'',checked:!!x.checked}))};
+ return {kind,name:item.name||'Formula',number:kind==='batch'?item.number:(item.batchNumber||''),date:(kind==='batch'?item.createdAt:Date.now())||Date.now(),version:item.version||'Experimental',unit:item.unit||'g',units,fill,total:fill*units,status:item.status|| (kind==='master'?'Approved':'Experimental'),actual:item.actual,notes:item.notes||'',list:(item.ingredients||[]).map(x=>({name:x.name,percent:N(x.percent),amount:kind==='batch'?N(x.amount):fill*units*N(x.percent)/100,lot:x.lot||'',checked:!!x.checked}))};
 }
 function page(p,notes=true,checks=true){
  const trs=p.list.map(x=>'<tr><td>'+ (checks?(x.checked?'☑':'☐'):'')+'</td><td>'+H(x.name)+'</td><td>'+fmt(x.percent)+'%</td><td><strong>'+fmt(x.amount)+' '+H(p.unit)+'</strong></td><td>'+H(x.lot)+'</td></tr>').join('');
