@@ -38,7 +38,7 @@ function sources(){
  items.push({id:'product:'+p.id,name:p.name||'Unnamed product',fill:num(p.formulaFillSize),unit,ingredients:lines,valid:!missing.length&&['g','ml'].includes(unit)&&num(p.formulaFillSize)>0,sourceType:'product',version:'Original product formula'});
  }
  for(const l of store.labs){
-  items.push({id:'saved:'+l.id,name:l.name,fill:num(l.fill),unit:l.unit,ingredients:(l.ingredients||[]).map(i=>({...i})),valid:num(l.fill)>0&&['g','ml'].includes(l.unit)&&Array.isArray(l.ingredients)&&l.ingredients.length>0,sourceType:'saved',version:'Saved formula'});
+  items.push({id:'saved:'+l.id,name:l.name,fill:num(l.fill),unit:l.unit,ingredients:(l.ingredients||[]).map(i=>({...i})),valid:num(l.fill)>0&&['g','ml'].includes(l.unit)&&Array.isArray(l.ingredients)&&l.ingredients.length>0,sourceType:'saved',previewQty:num(l.previewQty)||5,version:'Saved formula'});
  }
  for(const m of store.masters){
  if(store.masters.some(x=>x.name.toLowerCase()===m.name.toLowerCase()&&x.version>m.version))continue;
@@ -47,7 +47,7 @@ function sources(){
  return items.sort((a,b)=>a.name.localeCompare(b.name,'en-GB',{sensitivity:'base'}));
 }
 function selected(){return sources().find(s=>s.id===sourceId)||null;}
-function pickDefault(){const list=sources();if(!list.some(x=>x.id===sourceId))sourceId=list[0]?.id||'';if(!batchNo)batchNo=makeNo();if(!draft&&selected())copySelected();}
+function pickDefault(){const list=sources();if(!list.some(x=>x.id===sourceId)){sourceId=list[0]?.id||'';if(list[0]?.previewQty)qty=list[0].previewQty;}if(!batchNo)batchNo=makeNo();if(!draft&&selected())copySelected();}
 function copySelected(){const s=selected();draft=s?{name:s.name,fill:s.fill,unit:s.unit,ingredients:s.ingredients.map(i=>({...i}))}:null;}
 function validFormula(){
  if(!draft)throw Error('Select a product formula.');
@@ -112,7 +112,7 @@ function updateTotals(){
  draft.ingredients.forEach((i,j)=>{const x=el('simpleAmount'+j);if(x)x.textContent=fmt(t*num(i.percent)/100)+' '+draft.unit;});
 }
 window.simpleMode=m=>{mode=m;copySelected();render();};
-window.simpleSourceChange=id=>{sourceId=id;copySelected();render();};
+window.simpleSourceChange=id=>{sourceId=id;const chosen=selected();qty=chosen?.previewQty||5;copySelected();render();};
 window.simpleBatchChange=n=>{batchNo=n;};
 window.simpleQtyChange=n=>{qty=num(n);updateTotals();};
 window.simpleFillChange=n=>{if(draft){draft.fill=n;updateTotals();}};
