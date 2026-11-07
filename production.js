@@ -27,6 +27,26 @@ async function save(){
     setSS('ok','✓ Production saved');
   }finally{saveBusy=false;}
 }
+
+function batchCode(){
+ const d=new Date(),date=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+ const prefix='KN-'+date+'-',used=new Set(data.batches.map(b=>String(b.number||'').toUpperCase()));
+ for(const m of [...data.masters,...data.labs])if(m.batchNumber)used.add(String(m.batchNumber).toUpperCase());
+ let count=1,code;
+ do{code=prefix+String(count++).padStart(3,'0');}while(used.has(code)&&count<100000);
+ return code;
+}
+function ensureBatchNumber(){
+ if(!batchId)batchId=batchCode();
+ return batchId;
+}
+function validateBatchNumber(value,ignoreId){
+ const n=String(value||'').trim();
+ if(!n||n.length>80)throw Error('Enter a batch number of up to 80 characters.');
+ if(data.batches.some(b=>b.id!==ignoreId&&String(b.number).toLowerCase()===n.toLowerCase()))throw Error('This batch number has already been used in Production History.');
+ return n;
+}
+
 function tabs(){return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 20px">'+[['batches','Production Batches'],['masters','Master Formulas'],['lab','Formula Lab']].map(t=>'<button class="btn '+(view===t[0]?'btn-purple':'btn-outline')+'" onclick="productionSelect(\''+t[0]+'\')">'+t[1]+'</button>').join('')+'</div>';}
 function title(t,desc){return '<div class="section-head"><span class="section-title">'+t+'</span></div><p class="hint" style="margin:0 0 16px">'+desc+'</p>';}
 function home(){
@@ -52,7 +72,8 @@ function editorHtml(){
  if(!draft)return '';
  const q=draft.previewQty??5,unit=draft.unit||'g';
  return '<div class="card" style="margin-top:16px"><div class="card-head"><span class="card-title">'+(draft.kind==='lab'?'Formula experiment':'New approved formula')+'</span><button class="btn btn-outline btn-sm" onclick="productionCancel()">Cancel</button></div>'+
- '<div class="field"><label for="productionFormulaName">Product name</label><input id="productionFormulaName" value="'+E(draft.name)+'" oninput="productionDraftField(\'name\',this.value)"></div>'+
+ '<div class="field"><label for="productionFormulaName">Product name</label><input id="productionFormulaName" value="'+E(draft.name)+'" oninput="productionDraftField(\'name\',this.value)"></div>'+ 
+ '<div class="field"><label for="productionDraftBatch">Batch number <span style="font-weight:400">(automatically generated, editable)</span></label><input id="productionDraftBatch" value="'+E(draft.batchNumber||'')+'" oninput="productionDraftField(\'batchNumber\',this.value)" aria-describedby="batchHelp"><div class="hint" id="batchHelp">This identifies the current production or test run. It is separate from the formula version and product pricing.</div></div>'+
  '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:16px"><div class="field" style="flex:1;min-width:150px"><label for="pQuantity">Quantity of units</label><input type="number" id="pQuantity" value="'+E(q)+'" min="1" max="100000" step="1" oninput="productionDraftField(\'previewQty\',this.value)"></div>'+
  '<div class="field" style="flex:1;min-width:150px"><label for="pFill">Size of each unit</label><input type="number" id="pFill" value="'+E(draft.fill)+'" min="0.001" step="any" placeholder="Enter size" oninput="productionDraftField(\'fill\',this.value)"></div>'+
  '<div class="field" style="min-width:100px"><label for="pUnit">Unit</label><select id="pUnit" onchange="productionDraftField(\'unit\',this.value)"><option value="g" '+(unit==='g'?'selected':'')+'>g</option><option value="ml" '+(unit==='ml'?'selected':'')+'>ml</option></select></div></div>'+
@@ -92,10 +113,10 @@ function parseInput(){
  if(!ing.length||ing.some(i=>!i.name||!Number.isFinite(i.percent)||i.percent<=0))throw Error('Provide ingredient names and positive percentages.');
  const total=ing.reduce((a,b)=>a+b.percent,0);
  if(Math.abs(total-100)>0.00001)throw Error('Percentages add to '+fmt(total)+'%, not 100%.');
- return {name,fill,unit,ingredients:ing,previewQty};
+ return {name,fill,unit,ingredients:ing,previewQty,batchNumber:validateBatchNumber(draft.batchNumber)};
 }
 window.productionSelect=type=>{view=type;draft=null;home();};
-window.productionNew=kind=>{view=kind==='master'?'masters':'lab';draft={kind,name:'',fill:200,unit:'g',ingredients:[]};home();};
+window.productionNew=kind=>{view=kind==='master'?'masters':'lab';draft={kind,name:'',fill:200,unit:'g',ingredients:[],batchNumber:batchCode()};home();};
 window.productionCancel=()=>{draft=null;home();};
 window.productionSaveFormula=async()=>{
  try{
@@ -111,8 +132,8 @@ window.productionSaveFormula=async()=>{
   await save();draft=null;home();msg('Formula saved.');
  }catch(e){msg(e.message);}
 };
-window.productionEditLab=id=>{const l=data.labs.find(x=>x.id===id);if(l){draft={...l,kind:'lab'};view='lab';home();}};
-window.productionCopyLab=id=>{const m=data.masters.find(x=>x.id===id);if(m){draft={...m,id:null,kind:'lab',name:m.name,createdAt:null};view='lab';home();}};
+window.productionEditLab=id=>{const l=data.labs.find(x=>x.id===id);if(l){draft={...l,kind:'lab',batchNumber:l.batchNumber||batchCode()};view='lab';home();}};
+window.productionCopyLab=id=>{const m=data.masters.find(x=>x.id===id);if(m){draft={...m,id:null,kind:'lab',name:m.name,createdAt:null,batchNumber:batchCode()};view='lab';home();}};
 window.productionApprove=async id=>{
  const l=data.labs.find(x=>x.id===id);if(!l)return;
  if(!confirm('Approve this tested formula as a new master version? This will not edit earlier versions or pricing.'))return;
@@ -137,7 +158,7 @@ window.productionImportProduct=()=>{
  if(missing.length){msg('The saved formula references '+missing.length+' missing ingredient(s). Restore those ingredient records before importing; no rows have been omitted.');return;}
  const unit=p.formulaBatchUnit==='kg'?'g':p.formulaBatchUnit==='L'?'ml':p.formulaBatchUnit;
  if(!['g','ml'].includes(unit)){msg('Confirm the formula measurement unit before importing.');return;}
- draft={kind:'lab',name:p.name,fill:Number(p.formulaFillSize)||'',unit,sourceProductId:p.id,ingredients:p.formula.map(r=>({name:ingredients.find(i=>i.id===r.ingId).name,percent:Number(r.pct)}))};
+ draft={kind:'lab',name:p.name,fill:Number(p.formulaFillSize)||'',unit,sourceProductId:p.id,batchNumber:batchCode(),ingredients:p.formula.map(r=>({name:ingredients.find(i=>i.id===r.ingId).name,percent:Number(r.pct)}))};
  view='lab';home();msg('Loaded all '+draft.ingredients.length+' saved ingredients. Check the percentages, measurement unit and fill size, then save the experiment and approve it when verified.');
 };
 function chooseOptions(){return activeMasters().map(m=>'<option value="'+E(m.id)+'" '+(chosen===m.id?'selected':'')+'>'+E(m.name)+' · '+fmt(m.fill)+E(m.unit)+' · v'+m.version+'</option>').join('');}
@@ -145,10 +166,10 @@ function calculation(m){return m.ingredients.map(i=>({name:i.name,percent:i.perc
 function batchesHtml(){
  const m=activeMasters().find(x=>x.id===chosen)||activeMasters()[0];if(m)chosen=m.id;
  let s=productImportHtml()+'<div class="card"><div class="card-head"><span class="card-title">Create production batch</span></div>';
- if(!m)s+='<p class="hint"><strong>Batch number:</strong> This is automatically suggested (and editable) when you select an approved formula. To enable batch numbers and the weighing calculator, first load an existing product formula for review or add an approved master formula.</p><button class="btn btn-purple" onclick="productionNew(\'master\')">+ Add master formula</button>';
+ if(!m)s+='<div class="field"><label for="batchNo">Batch number (automatically generated, editable)</label><input id="batchNo" value="'+E(ensureBatchNumber())+'" oninput="productionBatchNo(this.value)"></div><p class="hint">To calculate a production batch, load or approve a formula first. Your batch reference is already available above.</p><button class="btn btn-purple" onclick="productionNew(\'master\')">+ Add master formula</button>';
  else{
   s+='<div class="field"><label>Approved product</label><select id="batchFormula" onchange="productionChoose(this.value)">'+chooseOptions()+'</select></div>'+
-  '<div class="grid-2"><div class="field"><label>Quantity of units</label><input id="batchQty" type="number" min="1" step="1" value="'+qty+'" onchange="productionQty(this.value)"></div><div class="field"><label>Batch number (editable)</label><input id="batchNo" value="'+E(batchId||defaultBatch())+'" oninput="productionBatchNo(this.value)"></div></div>'+
+  '<div class="grid-2"><div class="field"><label>Quantity of units</label><input id="batchQty" type="number" min="1" step="1" value="'+qty+'" onchange="productionQty(this.value)"></div><div class="field"><label>Batch number (editable)</label><input id="batchNo" value="'+E(ensureBatchNumber())+'" oninput="productionBatchNo(this.value)"></div></div>'+
   '<p><strong>Total: '+fmt(m.fill*qty)+' '+E(m.unit)+'</strong> for '+qty+' × '+fmt(m.fill)+E(m.unit)+' units</p>'+
   '<table class="tbl"><thead><tr><th>Ingredient</th><th>%</th><th>Amount to weigh ('+E(m.unit)+')</th></tr></thead><tbody>'+
   calculation(m).map(i=>'<tr><td>'+E(i.name)+'</td><td>'+fmt(i.percent)+'%</td><td><strong>'+fmt(i.amount)+'</strong></td></tr>').join('')+
@@ -159,18 +180,16 @@ function batchesHtml(){
  s+=data.batches.length?'<table class="tbl"><thead><tr><th>Batch</th><th>Product</th><th>Units</th><th>Status</th><th></th></tr></thead><tbody>'+[...data.batches].reverse().map(b=>'<tr><td>'+E(b.number)+'</td><td>'+E(b.name)+'</td><td>'+b.qty+'</td><td>'+E(b.status)+'</td><td><button class="btn btn-outline btn-sm" onclick="productionViewBatch(\''+b.id+'\')">Open</button></td></tr>').join('')+'</tbody></table>':'<p class="hint">No saved batches yet.</p>';
  return s+'</div><div id="batchDetail"></div>';
 }
-function defaultBatch(){const d=new Date(),date=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');return 'KN-'+date+'-'+String(Math.floor(Math.random()*9000)+1000);}
-window.productionChoose=id=>{chosen=id;batchId=by('batchNo')?.value||'';home();};
+function defaultBatch(){return ensureBatchNumber();}
+window.productionChoose=id=>{chosen=id;batchId=by('batchNo')?.value||batchId;home();};
 window.productionQty=n=>{if(!Number.isSafeInteger(Number(n))||Number(n)<1||Number(n)>100000){msg('Enter a whole number between 1 and 100,000.');return;}qty=Number(n);batchId=by('batchNo')?.value||'';home();};
 window.productionBatchNo=n=>{batchId=n;};
 window.productionCreateBatch=async()=>{
  const m=activeMasters().find(x=>x.id===chosen);if(!m)return;
- const number=(by('batchNo')?.value||'').trim();
- if(!number||number.length>80){msg('Enter a batch number (80 characters maximum).');return;}
- if(data.batches.some(b=>b.number.toLowerCase()===number.toLowerCase())){msg('Batch number already exists. Choose another.');return;}
+ let number;try{number=validateBatchNumber(by('batchNo')?.value||batchId);}catch(e){msg(e.message);return;}
  const b={id:guid(),number,formulaId:m.id,version:m.version,name:m.name,fill:m.fill,unit:m.unit,ingredients:calculation(m).map(i=>({...i,checked:false,lot:''})),qty,actual:null,status:'Planned',notes:'',createdAt:new Date().toISOString()};
  data.batches.push(b);
- try{await save();batchId='';home();productionViewBatch(b.id);msg('Batch saved.');}catch(e){data.batches.pop();msg(e.message);}
+ try{await save();batchId=batchCode();home();productionViewBatch(b.id);msg('Batch saved.');}catch(e){data.batches.pop();msg(e.message);}
 };
 window.productionViewBatch=id=>{
  const b=data.batches.find(x=>x.id===id),el=by('batchDetail');if(!b||!el)return;
