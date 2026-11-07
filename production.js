@@ -123,7 +123,7 @@ window.productionApprove=async id=>{
 window.productionInspect=id=>{
  const m=data.masters.find(x=>x.id===id);if(!m)return;
  draft=null;home();
- const el=by('prodMessage');el.innerHTML='<div class="card"><strong>'+E(m.name)+' v'+m.version+'</strong> ('+fmt(m.fill)+' '+E(m.unit)+')<table class="tbl"><tbody>'+formulaRows(m)+'</tbody></table><p class="hint">Approved '+E(m.approvedAt||'')+'</p></div>';
+ const el=by('prodMessage');el.innerHTML='<div class="card"><strong>'+E(m.name)+' v'+m.version+'</strong> ('+fmt(m.fill)+' '+E(m.unit)+')<table class="tbl"><tbody>'+formulaRows(m)+'</tbody></table><p class="hint">Approved '+E(m.approvedAt||'')+'</p>'+exportButtons('master',m.id)+'</div>';
 };
 function productImportHtml(){
  const list=[...products].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en-GB',{numeric:true,sensitivity:'base'}));
