@@ -145,7 +145,7 @@ function calculation(m){return m.ingredients.map(i=>({name:i.name,percent:i.perc
 function batchesHtml(){
  const m=activeMasters().find(x=>x.id===chosen)||activeMasters()[0];if(m)chosen=m.id;
  let s=productImportHtml()+'<div class="card"><div class="card-head"><span class="card-title">Create production batch</span></div>';
- if(!m)s+='<p class="hint">Add an approved master formula first, then return here to generate a production worksheet.</p><button class="btn btn-purple" onclick="productionNew(\'master\')">+ Add master formula</button>';
+ if(!m)s+='<p class="hint"><strong>Batch number:</strong> This is automatically suggested (and editable) when you select an approved formula. To enable batch numbers and the weighing calculator, first load an existing product formula for review or add an approved master formula.</p><button class="btn btn-purple" onclick="productionNew(\'master\')">+ Add master formula</button>';
  else{
   s+='<div class="field"><label>Approved product</label><select id="batchFormula" onchange="productionChoose(this.value)">'+chooseOptions()+'</select></div>'+
   '<div class="grid-2"><div class="field"><label>Quantity of units</label><input id="batchQty" type="number" min="1" step="1" value="'+qty+'" onchange="productionQty(this.value)"></div><div class="field"><label>Batch number (editable)</label><input id="batchNo" value="'+E(batchId||defaultBatch())+'" oninput="productionBatchNo(this.value)"></div></div>'+
@@ -181,7 +181,7 @@ window.productionViewBatch=id=>{
  '<div class="grid-2"><div class="field"><label>Actual units filled</label><input type="number" min="0" step="1" id="actualBatch" value="'+(b.actual??'')+'" placeholder="Units filled"></div>'+
  '<div class="field"><label>Production status</label><select id="statusBatch">'+['Planned','In progress','Completed','Cancelled'].map(s=>'<option '+(s===b.status?'selected':'')+'>'+s+'</option>').join('')+'</select></div></div>'+
  '<div class="field"><label>Production notes / observations</label><textarea id="notesBatch" rows="3">'+E(b.notes||'')+'</textarea></div>'+
- '<button class="btn btn-purple" onclick="productionSaveBatch(\''+b.id+'\')">Save batch record</button></div>';
+ '<button class="btn btn-purple" onclick="productionSaveBatch(\''+b.id+'\')">Save batch record</button>'+exportButtons('batch',b.id)+'</div>';
 };
 window.productionCheck=(id,j,v)=>{const b=data.batches.find(x=>x.id===id);if(b)b.ingredients[j].checked=v;};
 window.productionLot=(id,j,v)=>{const b=data.batches.find(x=>x.id===id);if(b)b.ingredients[j].lot=v;};
@@ -193,6 +193,18 @@ window.productionSaveBatch=async id=>{
  b.actual=actual;b.status=by('statusBatch').value;b.notes=by('notesBatch').value;b.updatedAt=new Date().toISOString();
  try{await save();home();productionViewBatch(id);msg('Batch record saved.');}catch(e){Object.assign(b,prev);msg(e.message);}
 };
+
+function exportButtons(kind,id){
+ const arg="'"+kind+"','"+id+"'";
+ return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0"><button class="btn btn-purple btn-sm" onclick="productionExport('+arg+',\'pdf\')">Print / Save PDF</button><button class="btn btn-outline btn-sm" onclick="productionExport('+arg+',\'spreadsheet\')">Download Excel (.xlsx)</button><button class="btn btn-outline btn-sm" onclick="productionExport('+arg+',\'email\')">Email draft</button></div>';
+}
+window.productionExport=(kind,id,format)=>{
+ const item=kind==='batch'?data.batches.find(x=>x.id===id):kind==='lab'?data.labs.find(x=>x.id===id):data.masters.find(x=>x.id===id);
+ if(!item||!window.KNProductionExport){msg('Export unavailable. Refresh the page and retry.');return;}
+ const options={qty:kind==='batch'?item.qty:(draft?.previewQty||1),notes:true,checks:true};
+ try{window.KNProductionExport[format](item,kind,options);}catch(e){msg('Could not export: '+e.message);}
+};
+
 window.renderProduction=async()=>{
  const el=by('prodContent');if(!el)return;
  el.innerHTML='<p class="hint">Loading production data...</p>';
