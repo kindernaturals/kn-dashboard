@@ -173,7 +173,8 @@ function pdf(item,kind,options={}){
  const url=URL.createObjectURL(blob);
  const a=document.createElement('a');
  a.href=url;
- a.download='KN-'+slug(p.number||p.name)+'-worksheet.pdf';
+ const base=slug(p.number||p.name);
+ a.download=(/^KN-/i.test(base)?base:'KN-'+base)+'-worksheet.pdf';
  document.body.appendChild(a);
  a.click();
  a.remove();
