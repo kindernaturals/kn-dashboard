@@ -153,7 +153,55 @@ select{border-radius:7px;border:1px solid rgba(107,53,168,0.2);padding:7px 10px;
 #pane-production textarea{width:100%;min-height:90px;padding:10px;border:1px solid var(--border);border-radius:7px;font:inherit;background:#fff;color:var(--bark)}
 #pane-production select,#pane-production input{max-width:100%}
 @media(max-width:600px){#pane-production .grid-2{grid-template-columns:1fr}}
-@media print{body *{visibility:hidden!important}#prodPrint,#prodPrint *{visibility:visible!important}#prodPrint{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;background:white}#prodPrint button{display:none!important}}
+/* Print from Chrome/iPad: keep a real worksheet in the top-level DOM.
+   The previous #prodPrint selector belonged to a removed Production view and caused blank PDF pages. */
+#knProductionPrintSheet{display:none}
+@media print{
+  @page{size:A4;margin:15mm}
+  body.kn-production-print-ready{background:#fff!important;color:#261837!important}
+  body.kn-production-print-ready > :not(#knProductionPrintSheet){display:none!important}
+  body.kn-production-print-ready #knProductionPrintSheet,
+  body.kn-production-print-ready #knProductionPrintSheet *{visibility:visible!important}
+  body.kn-production-print-ready #knProductionPrintSheet{
+    display:block!important;position:static!important;width:100%!important;
+    max-width:none!important;margin:0!important;padding:0!important;
+    background:white!important;color:#261837!important;box-shadow:none!important;
+    font-family:Arial,sans-serif!important;font-size:12px!important;line-height:1.4!important
+  }
+  #knProductionPrintSheet header{
+    position:static!important;top:auto!important;z-index:auto!important;
+    display:flex!important;justify-content:space-between!important;
+    align-items:flex-end!important;flex-wrap:nowrap!important;
+    background:white!important;color:#261837!important;border-bottom:3px solid #6B35A8!important;
+    padding:0 0 12px!important;margin:0 0 16px!important
+  }
+  #knProductionPrintSheet h1{font:700 25px Arial,sans-serif!important;color:#6B35A8!important;margin:0!important}
+  #knProductionPrintSheet h2{font:700 17px Arial,sans-serif!important;color:#542085!important;margin:22px 0 8px!important}
+  #knProductionPrintSheet .muted{color:#7d6b8d!important;font-size:11px!important}
+  #knProductionPrintSheet .meta{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin:18px 0!important}
+  #knProductionPrintSheet .meta div{padding:10px!important;background:#f3edfb!important}
+  #knProductionPrintSheet table{border-collapse:collapse!important;width:100%!important;margin-top:12px!important}
+  #knProductionPrintSheet thead{display:table-header-group!important}
+  #knProductionPrintSheet th,#knProductionPrintSheet td{
+    border:1px solid #d9cde7!important;padding:9px!important;text-align:left!important;
+    vertical-align:top!important;font-size:11px!important
+  }
+  #knProductionPrintSheet th{background:#eee5f7!important}
+  #knProductionPrintSheet tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  #knProductionPrintSheet .write{height:36px!important;border-bottom:1px solid #aca1b7!important}
+  #knProductionPrintSheet .foot{border-top:1px solid #d9cde7!important;margin-top:26px!important;padding-top:8px!important;font-size:10px!important;color:#786a86!important}
+  #knProductionPrintSheet .toolbar,#knProductionPrintSheet button{display:none!important}
+  /* If Chrome's own Print command is used before a worksheet export,
+     print the visible Production panel rather than an entirely blank page. */
+  body:not(.kn-production-print-ready) *{visibility:hidden!important}
+  body:not(.kn-production-print-ready) #pane-production,
+  body:not(.kn-production-print-ready) #pane-production *{visibility:visible!important}
+  body:not(.kn-production-print-ready) #pane-production{
+    display:block!important;position:absolute!important;left:0!important;top:0!important;
+    width:100%!important;max-width:none!important;background:#fff!important
+  }
+  body:not(.kn-production-print-ready) #pane-production button{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -2772,8 +2820,8 @@ function renderFillSizes(batchUnit,usable,totalIngCost,labour){
   }).join('');
 }
 </script>
-<script src="./production-exports.js?v=20261114-fix2"></script>
-<script src="./production-simple.js?v=20261114-fix2"></script>
+<script src="./production-exports.js?v=20261114-fix3"></script>
+<script src="./production-simple.js?v=20261114-fix3"></script>
 </body>
 </html>
 
