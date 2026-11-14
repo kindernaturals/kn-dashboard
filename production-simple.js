@@ -4,7 +4,13 @@
 const KEY='production_v1';
 let store={masters:[],labs:[],batches:[]},ready=false,mode='original',sourceId='',draft=null,batchNo='',qty=5,working=false,openBatch='';
 const el=id=>document.getElementById(id),esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),num=x=>Number(x),fmt=x=>Number(x).toLocaleString('en-GB',{maximumFractionDigits:3}),uid=()=> 'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-function message(s){const x=el('simpleNotice');if(x)x.textContent=s;}
+function message(s){
+ for(const id of ['simpleNotice','simpleActionNotice','simpleHistoryNotice']){
+  const x=el(id);if(!x)continue;
+  x.textContent=s;
+  x.style.color=/failed|could not|unavailable|invalid|must |already|enter |select |incomplete|error/i.test(s)?'var(--danger)':'var(--purple)';
+ }
+}
 function makeNo(){
  const d=new Date(),day=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
  const used=new Set(store.batches.map(x=>String(x.number||'').toUpperCase()));
@@ -47,9 +53,9 @@ function sources(){
  return items.sort((a,b)=>a.name.localeCompare(b.name,'en-GB',{sensitivity:'base'}));
 }
 function selected(){return sources().find(s=>s.id===sourceId)||null;}
-function pickDefault(){const list=sources();if(!list.some(x=>x.id===sourceId)){sourceId=list[0]?.id||'';if(list[0]?.previewQty)qty=list[0].previewQty;}if(!batchNo)batchNo=makeNo();if(!draft&&selected())copySelected();}
+function pickDefault(){const list=sources();if(!list.some(x=>x.id===sourceId)){const first=list.find(x=>x.valid)||list[0];sourceId=first?.id||'';if(first?.previewQty)qty=first.previewQty;}if(!batchNo)batchNo=makeNo();if(!draft&&selected())copySelected();}
 function copySelected(){const s=selected();draft=s?{name:s.name,fill:s.fill,unit:s.unit,ingredients:s.ingredients.map(i=>({...i}))}:null;}
-function validFormula(){
+function validFormula(forExport=false){
  if(!draft)throw Error('Select a product formula.');
  if(!Number.isFinite(num(draft.fill))||num(draft.fill)<=0)throw Error('Enter a positive size per unit.');
  if(!['g','ml'].includes(draft.unit))throw Error('Confirm the measurement unit (g or ml).');
@@ -59,7 +65,7 @@ function validFormula(){
  if(Math.abs(total-100)>0.00001)throw Error('Formula must total 100%. Currently '+fmt(total)+'%.');
  const number=String(batchNo).trim();
  if(!number||number.length>80)throw Error('Enter a batch number up to 80 characters.');
- if(store.batches.some(b=>String(b.number).toLowerCase()===number.toLowerCase()))throw Error('This batch number already exists in history.');
+ if(!forExport&&store.batches.some(b=>String(b.number).toLowerCase()===number.toLowerCase()))throw Error('This batch number already exists in history. Open the saved batch below to export it, or choose a new number.');
  return number;
 }
 function inputRows(){
@@ -97,7 +103,7 @@ function render(){
  (!s.valid?'<p style="color:var(--danger)">The original product has missing ingredients or an incomplete fill size/unit. Complete that formula in Products before saving a batch.</p>':'')+
  '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ingredient</th><th>Formula %</th><th>Amount to weigh</th>'+(mode==='editable'?'<th></th>':'')+'</tr></thead><tbody id="simpleIngredients">'+inputRows()+'</tbody><tfoot><tr><th>Total</th><th id="simplePercent"></th><th id="simpleWeight"></th>'+(mode==='editable'?'<th></th>':'')+'</tr></tfoot></table></div>'+
  (mode==='editable'?'<button class="btn btn-outline btn-sm" style="margin:12px 0" onclick="simpleAddIngredient()">+ Add ingredient</button><p class="hint">Changes apply to this batch only. The original recipe is not altered.</p>':'<p class="hint" style="margin-top:12px">This is your original saved formula, read-only. Adjust only the quantity and batch number.</p>')+
- '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-purple" onclick="simpleSaveBatch()">Save batch</button><button class="btn btn-outline" onclick="simpleExport(\'pdf\')">Print / PDF</button><button class="btn btn-outline" onclick="simpleExport(\'spreadsheet\')">Excel</button><button class="btn btn-outline" onclick="simpleExport(\'email\')">Email draft</button></div>';
+ '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" class="btn btn-purple" onclick="simpleSaveBatch()">Save batch</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'pdf\')">Print / PDF</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'spreadsheet\')">Excel</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'email\')">Email draft</button></div><p id="simpleFormulaCheck" class="hint" style="margin-top:10px" role="status"></p><p id="simpleActionNotice" style="margin:8px 0;color:var(--purple);font-weight:600" role="status" aria-live="polite"></p>';
  }
  html+='</div>'+history();panel.innerHTML=html;updateTotals();
  if(openBatch)openHistory(openBatch);
@@ -105,7 +111,12 @@ function render(){
 function updateTotals(){
  if(!draft)return;
  const total=draft.ingredients.reduce((a,i)=>a+(num(i.percent)||0),0),t=num(draft.fill)*qty;
- const p=el('simplePercent'),w=el('simpleWeight'),v=el('simpleTotal');
+ const p=el('simplePercent'),w=el('simpleWeight'),v=el('simpleTotal'),check=el('simpleFormulaCheck');
+ if(check){
+  const complete=Number.isFinite(total)&&Math.abs(total-100)<=0.00001;
+  check.textContent=complete?'Formula check: 100% total. Ready to save or export.':'Formula check: '+fmt(total)+'% total. It must equal 100% before saving or exporting. Choose Editable Formula to correct the percentages, without changing the original.';
+  check.style.color=complete?'var(--success)':'var(--danger)';
+ }
  if(p)p.textContent=fmt(total)+'%';
  if(w)w.textContent=fmt(t*total/100)+' '+draft.unit;
  if(v)v.textContent=Number.isFinite(t)?qty+' × '+fmt(num(draft.fill))+' '+draft.unit+' = '+fmt(t)+' '+draft.unit+' total':'Check unit size and quantity.';
@@ -120,22 +131,27 @@ window.simpleUnitChange=n=>{if(draft){draft.unit=n;render();}};
 window.simpleEditIngredient=(j,k,v)=>{if(draft?.ingredients[j]){draft.ingredients[j][k]=v;updateTotals();}};
 window.simpleAddIngredient=()=>{draft?.ingredients.push({name:'',percent:''});render();};
 window.simpleRemoveIngredient=j=>{draft?.ingredients.splice(j,1);render();};
-function snapshot(){
- const number=validFormula(),s=selected();
+function snapshot(forExport=false){
+ const number=validFormula(forExport),s=selected();
  if(mode==='original'&&!s.valid)throw Error('Original formula is incomplete; correct it in Products first.');
  const b={id:uid(),number,name:draft.name,formulaId:s.id,version:s.version,sourceType:mode==='editable'?'Edited batch copy':'Original formula',fill:num(draft.fill),unit:draft.unit,qty,ingredients:draft.ingredients.map(i=>({name:i.name.trim(),percent:num(i.percent),amount:num(draft.fill)*qty*num(i.percent)/100,checked:false,lot:''})),status:'Planned',actual:null,notes:'',createdAt:new Date().toISOString()};
  return b;
 }
 window.simpleSaveBatch=async()=>{
- let b;try{b=snapshot();}catch(e){message(e.message);return;}
+ let b;try{b=snapshot();}catch(e){message('Cannot save: '+e.message);return;}
  store.batches.push(b);
+ message('Saving batch '+b.number+'...');
  try{await save();batchNo=makeNo();openBatch=b.id;render();message('Batch '+b.number+' saved. Your original formula was not changed.');}
- catch(e){store.batches.pop();message(e.message);}
+ catch(e){store.batches.pop();message('Save failed: '+e.message);}
 };
 window.simpleExport=format=>{
- let b;try{b=snapshot();}catch(e){message(e.message);return;}
- if(!window.KNProductionExport){message('Export tools unavailable. Refresh and try again.');return;}
- try{window.KNProductionExport[format](b,'batch',{qty:b.qty});}catch(e){message(e.message);}
+ let b;try{b=snapshot(true);}catch(e){message('Cannot export: '+e.message);return;}
+ const action=window.KNProductionExport?.[format];
+ if(typeof action!=='function'){message('Export tools did not load. Please refresh the page in Safari or Chrome and retry.');return;}
+ try{
+  action(b,'batch',{qty:b.qty});
+  message(format==='pdf'?'PDF preview opened. Choose Print / Save PDF in the preview.':format==='spreadsheet'?'Excel download requested. Check your browser downloads.':'Email draft requested. Check your email app.');
+ }catch(e){message('Export failed: '+e.message);}
 };
 function openHistory(id){
  const b=store.batches.find(x=>x.id===id),target=el('simpleHistoryDetail');if(!b||!target)return;
@@ -146,19 +162,27 @@ function openHistory(id){
  '<div class="grid-2"><div class="field"><label>Actual units filled</label><input id="simpleActual" type="number" min="0" step="1" value="'+(b.actual??'')+'"></div>'+
  '<div class="field"><label>Status</label><select id="simpleStatus">'+['Planned','In progress','Completed','Cancelled'].map(v=>'<option '+(v===b.status?'selected':'')+'>'+v+'</option>').join('')+'</select></div></div>'+
  '<div class="field"><label>Notes</label><textarea id="simpleNotes">'+esc(b.notes||'')+'</textarea></div>'+
- '<button class="btn btn-purple" onclick="simpleUpdateBatch()">Save record</button> <button class="btn btn-outline" onclick="simpleHistoryExport(\'pdf\')">PDF</button> <button class="btn btn-outline" onclick="simpleHistoryExport(\'spreadsheet\')">Excel</button> <button class="btn btn-outline" onclick="simpleHistoryExport(\'email\')">Email</button></div>';
+ '<button type="button" class="btn btn-purple" onclick="simpleUpdateBatch()">Save record</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'pdf\')">PDF</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'spreadsheet\')">Excel</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'email\')">Email</button><p id="simpleHistoryNotice" style="margin:8px 0;color:var(--purple);font-weight:600" role="status" aria-live="polite"></p></div>';
 }
 window.simpleOpenBatch=id=>{openBatch=id;openHistory(id);};
 window.simpleCheck=(j,x)=>{const b=store.batches.find(x=>x.id===openBatch);if(b)b.ingredients[j].checked=x;};
 window.simpleLot=(j,x)=>{const b=store.batches.find(x=>x.id===openBatch);if(b)b.ingredients[j].lot=x;};
-window.simpleHistoryExport=type=>{const b=store.batches.find(x=>x.id===openBatch);if(b&&window.KNProductionExport)window.KNProductionExport[type](b,'batch',{qty:b.qty});};
+window.simpleHistoryExport=type=>{
+ const b=store.batches.find(x=>x.id===openBatch),action=window.KNProductionExport?.[type];
+ if(!b){message('Select a saved production batch first.');return;}
+ if(typeof action!=='function'){message('Export tools did not load. Refresh in Safari or Chrome.');return;}
+ try{
+  action(b,'batch',{qty:b.qty});
+  message(type==='pdf'?'PDF preview opened. Choose Print / Save PDF.':type==='spreadsheet'?'Excel download requested. Check Downloads.':'Email draft requested. Check your email app.');
+ }catch(e){message('Export failed: '+e.message);}
+};
 window.simpleUpdateBatch=async()=>{
  const b=store.batches.find(x=>x.id===openBatch);if(!b)return;
  const val=el('simpleActual').value;
  if(val!==''&&(!Number.isSafeInteger(num(val))||num(val)<0)){message('Actual units must be a non-negative whole number.');return;}
  const old={actual:b.actual,status:b.status,notes:b.notes};
  b.actual=val===''?null:num(val);b.status=el('simpleStatus').value;b.notes=el('simpleNotes').value;
- try{await save();render();message('Batch record updated.');}catch(e){Object.assign(b,old);message(e.message);}
+ try{await save();render();message('Batch record updated.');}catch(e){Object.assign(b,old);message('Save failed: '+e.message);}
 };
 window.renderProduction=async()=>{
  const panel=el('prodContent');if(!panel)return;
