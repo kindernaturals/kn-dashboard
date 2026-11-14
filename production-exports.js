@@ -167,6 +167,24 @@ function pdfFile(p,includeNotes=true,includeChecks=true){
  doc+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+startXref+'\n%%EOF';
  return new Blob([doc],{type:'application/pdf'});
 }
+function printSheet(item,kind,options={}){
+ const p=normal(item,kind,options.qty);
+ const html=page(p,options.notes!==false,options.checks!==false);
+ const start=html.indexOf('<body>'),end=html.lastIndexOf('</body>');
+ if(start<0||end<=start)throw Error('Could not prepare printable batch worksheet.');
+ const printHtml=html.slice(start+6,end).replace(/<div class="toolbar">[\s\S]*?<\/div>/,'');
+ document.getElementById('knProductionPrintSheet')?.remove();
+ const sheet=document.createElement('section');
+ sheet.id='knProductionPrintSheet';
+ sheet.setAttribute('aria-label','Kinder Naturals printable production worksheet');
+ sheet.innerHTML=printHtml;
+ document.body.appendChild(sheet);
+ // Print the actual top-level document, never an iframe or a Blob URL.
+ // Chrome on iPad can save a blank PDF from an embedded iframe.
+ if(typeof window.print!=='function')throw Error('Browser printing is unavailable.');
+ window.print();
+ return true;
+}
 function pdf(item,kind,options={}){
  const p=normal(item,kind,options.qty);
  const blob=pdfFile(p,options.notes!==false,options.checks!==false);
@@ -230,5 +248,5 @@ function email(item,kind,options={}){
  const link='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
  window.location.href=link;
 }
-window.KNProductionExport={pdf,spreadsheet,email};
+window.KNProductionExport={pdf,printSheet,spreadsheet,email};
 })();
