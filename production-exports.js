@@ -18,9 +18,44 @@ function page(p,notes=true,checks=true){
  '<div class="foot">Kinder Naturals · Controlled batch worksheet. Export is an independent snapshot. Changes made offline do not update the master formula.</div></body></html>';
 }
 function pdf(item,kind,options={}){
- const p=normal(item,kind,options.qty),w=window.open('','_blank');
- if(!w){alert('Allow pop-ups to open the printable PDF worksheet.');return;}
- w.document.open();w.document.write(page(p,options.notes!==false,options.checks!==false));w.document.close();w.focus();
+ // Preview the production worksheet in-page rather than using a pop-up,
+ // which is often blocked by mobile and embedded browsers.
+ const p=normal(item,kind,options.qty);
+ document.getElementById('knProductionPdfPreview')?.remove();
+ const overlay=document.createElement('div');
+ overlay.id='knProductionPdfPreview';
+ overlay.setAttribute('role','dialog');
+ overlay.setAttribute('aria-modal','true');
+ overlay.setAttribute('aria-label','Production PDF worksheet preview');
+ overlay.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;min-height:0;background:#f6f0ff;color:#261837;';
+ const bar=document.createElement('div');
+ bar.style.cssText='display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;background:#542085;color:white;';
+ const title=document.createElement('strong');
+ title.textContent='Production worksheet · '+p.name;
+ title.style.cssText='flex:1;min-width:170px;';
+ const print=document.createElement('button');
+ print.type='button';print.textContent='Print / Save PDF';
+ print.style.cssText='border:0;border-radius:6px;padding:10px 14px;background:white;color:#542085;font:600 14px Arial;cursor:pointer;';
+ const close=document.createElement('button');
+ close.type='button';close.textContent='Close preview';
+ close.style.cssText='border:1px solid #d3bdec;border-radius:6px;padding:10px 14px;background:transparent;color:white;font:600 14px Arial;cursor:pointer;';
+ const frame=document.createElement('iframe');
+ frame.title='Production worksheet preview';
+ frame.style.cssText='flex:1;min-height:0;width:100%;border:0;background:white;';
+ frame.srcdoc=page(p,options.notes!==false,options.checks!==false);
+ print.addEventListener('click',()=>{
+  try{
+   if(!frame.contentWindow)throw Error('Worksheet preview not loaded yet.');
+   frame.contentWindow.focus();
+   frame.contentWindow.print();
+  }catch(e){alert('Could not open the print sheet. Please try again in Safari or Chrome. '+e.message);}
+ });
+ close.addEventListener('click',()=>overlay.remove());
+ overlay.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.remove();});
+ bar.append(title,print,close);
+ overlay.append(bar,frame);
+ document.body.appendChild(overlay);
+ close.focus();
 }
 function encode(s){return new TextEncoder().encode(s);}
 function u16(a,n){a.push(n&255,(n>>>8)&255);}
