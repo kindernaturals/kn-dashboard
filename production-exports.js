@@ -179,6 +179,7 @@ function printSheet(item,kind,options={}){
  sheet.setAttribute('aria-label','Kinder Naturals printable production worksheet');
  sheet.innerHTML=printHtml;
  document.body.appendChild(sheet);
+ document.body.classList.add('kn-production-print-ready');
  // Print the actual top-level document, never an iframe or a Blob URL.
  // Chrome on iPad can save a blank PDF from an embedded iframe.
  if(typeof window.print!=='function')throw Error('Browser printing is unavailable.');
