@@ -103,7 +103,7 @@ function render(){
  (!s.valid?'<p style="color:var(--danger)">The original product has missing ingredients or an incomplete fill size/unit. Complete that formula in Products before saving a batch.</p>':'')+
  '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ingredient</th><th>Formula %</th><th>Amount to weigh</th>'+(mode==='editable'?'<th></th>':'')+'</tr></thead><tbody id="simpleIngredients">'+inputRows()+'</tbody><tfoot><tr><th>Total</th><th id="simplePercent"></th><th id="simpleWeight"></th>'+(mode==='editable'?'<th></th>':'')+'</tr></tfoot></table></div>'+
  (mode==='editable'?'<button class="btn btn-outline btn-sm" style="margin:12px 0" onclick="simpleAddIngredient()">+ Add ingredient</button><p class="hint">Changes apply to this batch only. The original recipe is not altered.</p>':'<p class="hint" style="margin-top:12px">This is your original saved formula, read-only. Adjust only the quantity and batch number.</p>')+
- '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" class="btn btn-purple" onclick="simpleSaveBatch()">Save batch</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'pdf\')">Download PDF</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'spreadsheet\')">Excel</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'email\')">Email draft</button></div><p id="simpleFormulaCheck" class="hint" style="margin-top:10px" role="status"></p><p id="simpleActionNotice" style="margin:8px 0;color:var(--purple);font-weight:600" role="status" aria-live="polite"></p>';
+ '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" class="btn btn-purple" onclick="simpleSaveBatch()">Save batch</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'printSheet\')">PDF for iPad / Chrome</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'pdf\')">Download PDF</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'spreadsheet\')">Excel</button><button type="button" class="btn btn-outline" onclick="simpleExport(\'email\')">Email draft</button></div><p class="hint" style="margin-top:10px">On iPad, choose <strong>PDF for iPad / Chrome</strong>, then in the print preview tap Share and Save to Files. Do not save the whole Business Tool page.</p><p id="simpleFormulaCheck" class="hint" style="margin-top:10px" role="status"></p><p id="simpleActionNotice" style="margin:8px 0;color:var(--purple);font-weight:600" role="status" aria-live="polite"></p>';
  }
  html+='</div>'+history();panel.innerHTML=html;updateTotals();
  if(openBatch)openHistory(openBatch);
@@ -150,7 +150,7 @@ window.simpleExport=format=>{
  if(typeof action!=='function'){message('Export tools did not load. Please refresh the page in Safari or Chrome and retry.');return;}
  try{
   action(b,'batch',{qty:b.qty});
-  message(format==='pdf'?'PDF file download requested. Open the downloaded PDF in Files.':format==='spreadsheet'?'Excel download requested. Check your browser downloads.':'Email draft requested. Check your email app.');
+  message(format==='printSheet'?'Chrome print sheet requested. In Print, choose Share then Save to Files. The worksheet should be visible in the preview.':format==='pdf'?'PDF download requested. On an iPad, use PDF for iPad / Chrome if this file previews blank.':format==='spreadsheet'?'Excel download requested. Check your browser downloads.':'Email draft requested. Check your email app.');
  }catch(e){message('Export failed: '+e.message);}
 };
 function openHistory(id){
@@ -162,7 +162,7 @@ function openHistory(id){
  '<div class="grid-2"><div class="field"><label>Actual units filled</label><input id="simpleActual" type="number" min="0" step="1" value="'+(b.actual??'')+'"></div>'+
  '<div class="field"><label>Status</label><select id="simpleStatus">'+['Planned','In progress','Completed','Cancelled'].map(v=>'<option '+(v===b.status?'selected':'')+'>'+v+'</option>').join('')+'</select></div></div>'+
  '<div class="field"><label>Notes</label><textarea id="simpleNotes">'+esc(b.notes||'')+'</textarea></div>'+
- '<button type="button" class="btn btn-purple" onclick="simpleUpdateBatch()">Save record</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'pdf\')">Download PDF</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'spreadsheet\')">Excel</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'email\')">Email</button><p id="simpleHistoryNotice" style="margin:8px 0;color:var(--purple);font-weight:600" role="status" aria-live="polite"></p></div>';
+ '<button type="button" class="btn btn-purple" onclick="simpleUpdateBatch()">Save record</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'printSheet\')">PDF for iPad / Chrome</button><button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'pdf\')">Download PDF</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'spreadsheet\')">Excel</button> <button type="button" class="btn btn-outline" onclick="simpleHistoryExport(\'email\')">Email</button><p id="simpleHistoryNotice" style="margin:8px 0;color:var(--purple);font-weight:600" role="status" aria-live="polite"></p></div>';
 }
 window.simpleOpenBatch=id=>{openBatch=id;openHistory(id);};
 window.simpleCheck=(j,x)=>{const b=store.batches.find(x=>x.id===openBatch);if(b)b.ingredients[j].checked=x;};
@@ -173,7 +173,7 @@ window.simpleHistoryExport=type=>{
  if(typeof action!=='function'){message('Export tools did not load. Refresh in Safari or Chrome.');return;}
  try{
   action(b,'batch',{qty:b.qty});
-  message(type==='pdf'?'PDF file download requested. Open the downloaded PDF in Files.':type==='spreadsheet'?'Excel download requested. Check Downloads.':'Email draft requested. Check your email app.');
+  message(type==='printSheet'?'Chrome print sheet requested. Choose Share then Save to Files.':type==='pdf'?'PDF download requested. If it previews blank on your iPad, use PDF for iPad / Chrome.':type==='spreadsheet'?'Excel download requested. Check Downloads.':'Email draft requested. Check your email app.');
  }catch(e){message('Export failed: '+e.message);}
 };
 window.simpleUpdateBatch=async()=>{
