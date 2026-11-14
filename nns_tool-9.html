@@ -735,7 +735,10 @@ async function saveFx(){await saveSetDB('fx',fxRates);toast('Exchange rates save
 function showPane(name){
   ['dashboard','ingredients','packaging','products','pricing','production','collaborators','settings'].forEach(p=>{document.getElementById('pane-'+p).style.display=p===name?'block':'none';document.getElementById('nav-'+p).classList.toggle('active',p===name);});
   if(name==='collaborators')loadCollaborators(true);
-  if(name==='production')renderProduction();
+  if(name==='production'){
+    if(typeof window.renderProduction==='function')window.renderProduction();
+    else document.getElementById('prodContent').textContent='Production controls could not load. Refresh this page in Safari or Chrome.';
+  }
   if(name==='dashboard')renderDashboard();
   if(name==='ingredients')renderIngTable();
   if(name==='packaging')renderPkgTable();
@@ -2769,9 +2772,8 @@ function renderFillSizes(batchUnit,usable,totalIngCost,labour){
   }).join('');
 }
 </script>
-<script src="./production-exports.js"></script>
-<script src="./production.js"></script>
-<script src="./production-simple.js"></script>
+<script src="./production-exports.js?v=20261114-fix1"></script>
+<script src="./production-simple.js?v=20261114-fix1"></script>
 </body>
 </html>
 
