@@ -17,45 +17,167 @@ function page(p,notes=true,checks=true){
  (notes?'<h2>Production notes</h2><div>'+H(p.notes)+'</div><div class="write"></div><h2>Manufacturing checks</h2><p>Actual units: '+(p.actual??'________')+' &nbsp;&nbsp; Prepared by: __________________ &nbsp;&nbsp; Checked by: __________________</p><p>Production date/time: __________________ &nbsp; Sign-off: __________________</p>':'')+
  '<div class="foot">Kinder Naturals · Controlled batch worksheet. Export is an independent snapshot. Changes made offline do not update the master formula.</div></body></html>';
 }
-function pdf(item,kind,options={}){
- // Preview the production worksheet in-page rather than using a pop-up,
- // which is often blocked by mobile and embedded browsers.
- const p=normal(item,kind,options.qty);
- document.getElementById('knProductionPdfPreview')?.remove();
- const overlay=document.createElement('div');
- overlay.id='knProductionPdfPreview';
- overlay.setAttribute('role','dialog');
- overlay.setAttribute('aria-modal','true');
- overlay.setAttribute('aria-label','Production PDF worksheet preview');
- overlay.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;min-height:0;background:#f6f0ff;color:#261837;';
- const bar=document.createElement('div');
- bar.style.cssText='display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;background:#542085;color:white;';
- const title=document.createElement('strong');
- title.textContent='Production worksheet · '+p.name;
- title.style.cssText='flex:1;min-width:170px;';
- const print=document.createElement('button');
- print.type='button';print.textContent='Print / Save PDF';
- print.style.cssText='border:0;border-radius:6px;padding:10px 14px;background:white;color:#542085;font:600 14px Arial;cursor:pointer;';
- const close=document.createElement('button');
- close.type='button';close.textContent='Close preview';
- close.style.cssText='border:1px solid #d3bdec;border-radius:6px;padding:10px 14px;background:transparent;color:white;font:600 14px Arial;cursor:pointer;';
- const frame=document.createElement('iframe');
- frame.title='Production worksheet preview';
- frame.style.cssText='flex:1;min-height:0;width:100%;border:0;background:white;';
- frame.srcdoc=page(p,options.notes!==false,options.checks!==false);
- print.addEventListener('click',()=>{
-  try{
-   if(!frame.contentWindow)throw Error('Worksheet preview not loaded yet.');
-   frame.contentWindow.focus();
-   frame.contentWindow.print();
-  }catch(e){alert('Could not open the print sheet. Please try again in Safari or Chrome. '+e.message);}
+// Create an actual, self-contained PDF file. No iframe printing or browser
+// "Save webpage as PDF": those can produce blank files in iPad Files Preview.
+function pdfPlain(value){
+ return String(value??'')
+  .replace(/[\u2010-\u2015]/g,'-').replace(/[\u2018\u2019]/g,"'")
+  .replace(/[\u201c\u201d]/g,'"').replace(/\u00a3/g,'GBP ')
+  .replace(/[\u00d7\u2022\u00b7]/g,'-')
+  .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[^\x20-\x7e]/g,'?');
+}
+function pdfEscape(s){return pdfPlain(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');}
+function pdfWrap(s,width,size=10,bold=false){
+ const max=Math.max(5,Math.floor(width/(size*(bold?0.57:0.51)))),words=pdfPlain(s).split(/\s+/);
+ const lines=[];let line='';
+ for(let word of words){
+  if(!word)continue;
+  while(word.length>max){if(line){lines.push(line);line='';}lines.push(word.slice(0,max));word=word.slice(max);}
+  if(!word)continue;
+  if(line&&line.length+1+word.length>max){lines.push(line);line=word;}else line+=(line?' ':'')+word;
+ }
+ if(line||!lines.length)lines.push(line);
+ return lines;
+}
+function pdfFile(p,includeNotes=true,includeChecks=true){
+ const W=595,H=842,LEFT=41,RIGHT=554,BOTTOM=770, purple=[0.42,0.21,0.66];
+ const pages=[];let ops=[],top=0;
+ const col=(rgb)=>rgb.map(x=>Number(x).toFixed(3)).join(' ');
+ function write(x,y,value,size=10,bold=false,rgb=[0.15,0.10,0.22]){
+  ops.push('BT /'+(bold?'F2':'F1')+' '+size+' Tf '+col(rgb)+' rg 1 0 0 1 '+x.toFixed(2)+' '+(H-y).toFixed(2)+' Tm ('+pdfEscape(value)+') Tj ET');
+ }
+ function rectangle(x,y,w,h,color){
+  ops.push(col(color)+' rg '+x.toFixed(2)+' '+(H-y-h).toFixed(2)+' '+w.toFixed(2)+' '+h.toFixed(2)+' re f');
+ }
+ function rule(x1,y1,x2,y2,rgb=[0.82,0.76,0.90]){
+  ops.push(col(rgb)+' RG 0.7 w '+x1.toFixed(2)+' '+(H-y1).toFixed(2)+' m '+x2.toFixed(2)+' '+(H-y2).toFixed(2)+' l S');
+ }
+ function addPage(continued=false){
+  if(ops.length)pages.push(ops.join('\n')+'\n');
+  ops=[];
+  rectangle(0,0,W,9,purple);
+  write(LEFT,45,'KINDER NATURALS',22,true,purple);
+  write(LEFT,62,'PRODUCTION AND FORMULATION RECORD',9,false,[0.44,0.37,0.49]);
+  write(474,45,'CONFIDENTIAL',8,true,purple);
+  rule(LEFT,76,RIGHT,76,purple);
+  top=continued?99:98;
+  if(continued){write(LEFT,top,p.name+'  |  '+(p.number||'Not assigned')+'  (continued)',11,true);top+=22;}
+ }
+ function ensure(h){if(top+h>BOTTOM)addPage(true);}
+ function lineText(x,value,width,size=10,bold=false,color){
+  const lines=pdfWrap(value,width,size,bold);
+  for(let i=0;i<lines.length;i++)write(x,top+i*(size+4),lines[i],size,bold,color);
+  return lines.length*(size+4);
+ }
+ function metaRow(a,b,c,d){
+  ensure(35);
+  rectangle(LEFT,top-8,513,34,[0.97,0.95,0.99]);
+  write(LEFT+9,top+1,a,8,true,purple);
+  write(LEFT+9,top+16,pdfWrap(b,227,10)[0],10);
+  write(LEFT+266,top+1,c,8,true,purple);
+  write(LEFT+266,top+16,pdfWrap(d,220,10)[0],10);
+  top+=40;
+ }
+ function tableHeader(){
+  ensure(32);
+  rectangle(LEFT,top-2,513,29,[0.92,0.88,0.96]);
+  write(LEFT+6,top+16,'Done',9,true,purple);
+  write(LEFT+48,top+16,'Ingredient',9,true,purple);
+  write(LEFT+281,top+16,'%',9,true,purple);
+  write(LEFT+337,top+16,'Quantity',9,true,purple);
+  write(LEFT+433,top+16,'Supplier lot',9,true,purple);
+  top+=34;
+ }
+ function ingredient(row){
+  const names=pdfWrap(row.name,221,9),lots=pdfWrap(row.lot,71,9);
+  const n=Math.max(names.length,lots.length,1);
+  const ht=Math.max(28,n*13+13);
+  if(top+ht>BOTTOM){addPage(true);tableHeader();}
+  const start=top;rectangle(LEFT,top-4,513,ht,[1,1,1]);
+  write(LEFT+7,top+10,includeChecks?(row.checked?'[x]':'[ ]'):'',9);
+  names.forEach((v,j)=>write(LEFT+48,top+10+j*13,v,9));
+  write(LEFT+281,top+10,fmt(row.percent)+'%',9);
+  write(LEFT+337,top+10,fmt(row.amount)+' '+p.unit,9);
+  lots.forEach((v,j)=>write(LEFT+433,top+10+j*13,v,9));
+  top=start+ht;
+  rule(LEFT,top-3,RIGHT,top-3);
+ }
+ function noteLine(s){
+  for(const line of pdfWrap(s,489,10)){
+   ensure(17);write(LEFT+9,top,line,10);top+=16;
+  }
+ }
+ addPage();
+ write(LEFT,top,p.name,16,true,[0.31,0.15,0.53]);top+=26;
+ const date=new Date(p.date);
+ const dateLabel=Number.isFinite(date.getTime())?date.toLocaleDateString('en-GB'):'Not recorded';
+ metaRow('Record type',p.kind==='batch'?'Production batch':p.kind==='master'?'Approved master formula':'Formula lab experiment','Batch number',p.number||'Not assigned');
+ metaRow('Formula version',String(p.version),'Date',dateLabel);
+ metaRow('Units planned',fmt(p.units)+' units','Fill size',fmt(p.fill)+' '+p.unit);
+ metaRow('Total quantity',fmt(p.total)+' '+p.unit,'Production status',p.status||'Planned');
+ top+=9;
+ write(LEFT,top,'INGREDIENT WORKSHEET',12,true,purple);top+=17;
+ tableHeader();
+ for(const row of p.list)ingredient(row);
+ ensure(35);rectangle(LEFT,top-1,513,31,[0.95,0.92,0.98]);
+ write(LEFT+48,top+18,'TOTAL',10,true,purple);
+ write(LEFT+281,top+18,fmt(p.list.reduce((a,r)=>a+r.percent,0))+'%',10,true);
+ write(LEFT+337,top+18,fmt(p.list.reduce((a,r)=>a+r.amount,0))+' '+p.unit,10,true);
+ top+=47;
+ if(includeNotes){
+  ensure(60);write(LEFT,top,'PRODUCTION NOTES',12,true,purple);top+=20;
+  if(String(p.notes||'').trim())for(const line of String(p.notes).split(/\r?\n/))noteLine(line||' ');
+  else{noteLine('');rule(LEFT+8,top+10,RIGHT-10,top+10);top+=23;}
+  top+=9;
+  ensure(95);write(LEFT,top,'MANUFACTURING CHECKS',12,true,purple);top+=24;
+  noteLine('Actual units produced: '+(p.actual??'__________________'));
+  top+=4;noteLine('Prepared by: __________________    Checked by: __________________');
+  top+=4;noteLine('Production date/time: ___________    Sign-off: __________________');
+ }
+ if(!pages.length||ops.length)pages.push(ops.join('\n')+'\n');
+ // Add the same footer to every page, including multi-page formulas.
+ const streams=pages.map((stream,i)=>{
+  const x=stream.split('\n');
+  const footer=[];
+  footer.push(col([0.82,0.76,0.90])+' RG 0.7 w '+LEFT+' 51 m '+RIGHT+' 51 l S');
+  const footerText='Kinder Naturals | Controlled production worksheet | Page '+(i+1)+' of '+pages.length;
+  footer.push('BT /F1 8 Tf '+col([0.42,0.37,0.49])+' rg 1 0 0 1 '+LEFT+' 36 Tm ('+pdfEscape(footerText)+') Tj ET');
+  footer.push('BT /F1 7 Tf '+col([0.42,0.37,0.49])+' rg 1 0 0 1 '+LEFT+' 24 Tm (Offline exports do not alter saved product formulas.) Tj ET');
+  return stream+footer.join('\n')+'\n';
  });
- close.addEventListener('click',()=>overlay.remove());
- overlay.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.remove();});
- bar.append(title,print,close);
- overlay.append(bar,frame);
- document.body.appendChild(overlay);
- close.focus();
+ const objects=[];
+ objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+ objects[2]='<< /Type /Pages /Kids ['+streams.map((_,i)=>(5+2*i)+' 0 R').join(' ')+'] /Count '+streams.length+' >>';
+ objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+ objects[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+ streams.forEach((stream,i)=>{
+  const pageId=5+2*i,contentId=6+2*i;
+  objects[pageId]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+contentId+' 0 R >>';
+  objects[contentId]='<< /Length '+stream.length+' >>\nstream\n'+stream+'endstream';
+ });
+ let doc='%PDF-1.4\n',offsets=[0];
+ for(let i=1;i<objects.length;i++){
+  offsets[i]=doc.length;
+  doc+=i+' 0 obj\n'+objects[i]+'\nendobj\n';
+ }
+ const startXref=doc.length;
+ doc+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';
+ for(let i=1;i<objects.length;i++)doc+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+ doc+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+startXref+'\n%%EOF';
+ return new Blob([doc],{type:'application/pdf'});
+}
+function pdf(item,kind,options={}){
+ const p=normal(item,kind,options.qty);
+ const blob=pdfFile(p,options.notes!==false,options.checks!==false);
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;
+ a.download='KN-'+slug(p.number||p.name)+'-worksheet.pdf';
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 function encode(s){return new TextEncoder().encode(s);}
 function u16(a,n){a.push(n&255,(n>>>8)&255);}
